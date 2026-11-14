@@ -48,6 +48,8 @@ set.
 
 ## Engineering practice
 
+- [Repository checks import plan](execplans/import-rust-template-repo-checks.md)
+  describes the proposed import of Rust-template validation tooling.
 - [Complexity antipatterns and refactoring strategies](complexity-antipatterns-and-refactoring-strategies.md)
   explains cognitive complexity, the bumpy-road antipattern, and refactoring
   approaches for maintainable code.
