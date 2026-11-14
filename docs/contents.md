@@ -1,7 +1,7 @@
 # Documentation contents
 
-[Documentation contents](contents.md) is the index for Youxia's
-documentation set.
+[Documentation contents](contents.md) is the index for Youxia's documentation
+set.
 
 ## Project guides
 
@@ -19,6 +19,10 @@ documentation set.
 
 ## Rust reference material
 
+- [OrthoConfig user's guide](ortho-config-users-guide.md) documents layered
+  configuration with OrthoConfig v0.10.0.
+- [`rstest-bdd` user's guide](rstest-bdd-users-guide.md) documents
+  behaviour-driven testing with `rstest-bdd` v0.6.0.
 - [Reliable testing in Rust via dependency injection](reliable-testing-in-rust-via-dependency-injection.md)
   explains how to keep tests deterministic by injecting environment, clock,
   filesystem, and other external dependencies.
