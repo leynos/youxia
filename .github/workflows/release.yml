@@ -103,7 +103,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@484a0b528fb4d7bd804637ccb632e47a0e638317
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           path: artifacts
       - uses: softprops/action-gh-release@403a5240f3837fa857f642062e05aad6bb3391ca
