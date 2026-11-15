@@ -29,6 +29,24 @@ jobs:
       - run: make test
 """
 
+# A job can list the install after the step that needs it. The ordering
+# matters: `make test` has already stopped for a missing linker by the time
+# the later step would have installed it.
+LATE_MOLD_INSTALL = """\
+name: Fixture
+
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: make test
+      - uses: leynos/shared-actions/.github/actions/setup-rust@0000000000000000000000000000000000000000
+        with:
+          install-mold: 'true'
+"""
+
 
 def test_lane_jobs(workflow_text: str) -> list[tuple[str, str]]:
     """Name the jobs that run `make test`, with each job's own block.
@@ -52,12 +70,25 @@ def test_lane_jobs(workflow_text: str) -> list[tuple[str, str]]:
     return jobs
 
 
+def installs_mold_before_each_test_step(block: str) -> bool:
+    """Say whether every test step has a mold installation earlier in its job.
+
+    A later install cannot help: the step that links with mold has already
+    failed by then, so ordering is part of the contract rather than incidental.
+    """
+    installations = [match.start() for match in MOLD_INSTALL.finditer(block)]
+    return all(
+        any(installed < step for installed in installations)
+        for step in (match.start() for match in TEST_LANE_STEP.finditer(block))
+    )
+
+
 def jobs_missing_mold(workflow_text: str) -> list[str]:
-    """Name test-lane jobs that do not install mold in the same job."""
+    """Name test-lane jobs that do not install mold before their test steps."""
     return [
         name
         for name, block in test_lane_jobs(workflow_text)
-        if not MOLD_INSTALL.search(block)
+        if not installs_mold_before_each_test_step(block)
     ]
 
 
@@ -70,8 +101,8 @@ class WorkflowTests(RepositoryTest):
         `make test` links development binaries with mold, and its
         `check-build-tools` prerequisite stops the lane when the linker is
         absent. A workflow that runs the lane therefore has to install it in
-        the same job, otherwise the hosted job reports a missing host
-        capability instead of a test regression.
+        the same job and before the test step, otherwise the hosted job reports
+        a missing host capability instead of a test regression.
         """
         lane_workflows = {
             path.name: path.read_text()
@@ -105,6 +136,19 @@ class WorkflowTests(RepositoryTest):
             jobs_missing_mold(UNRELATED_MOLD_INSTALL),
             ["test"],
             "Installation in another job must not satisfy the check",
+        )
+
+    def test_mold_install_must_precede_the_test_step(self) -> None:
+        """An install listed after `make test` cannot satisfy the lane."""
+        self.assertEqual(
+            [name for name, _ in test_lane_jobs(LATE_MOLD_INSTALL)],
+            ["test"],
+            "The late-install fixture still owns a test lane",
+        )
+        self.assertEqual(
+            jobs_missing_mold(LATE_MOLD_INSTALL),
+            ["test"],
+            "A later installation must not satisfy an earlier test step",
         )
 
     def test_shared_checker_rejects_a_pr_secret_leak(self) -> None:

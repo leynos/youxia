@@ -158,10 +158,10 @@ Nextest 0.9.116 accepts both imported profiles; no runner upgrade was needed.
 
 Local implementation, negative controls and final review are complete. Hosted
 execution and environment protection are outside scope. The completed change
-affects 32 non-plan files: 1,325 executable/test changed lines, 143
+affects 32 non-plan files: 1,424 executable/test changed lines, 143
 configuration lines and 991 prose lines, counting additions and deletions
 independently of this plan. The 24-file, 1,200-executable-line and
-250-prose-line budgets are exceeded by eight files, 125 lines and 741 lines;
+250-prose-line budgets are exceeded by eight files, 224 lines and 741 lines;
 configuration stays within its budget. The import's own lint-formatting repairs
 account for one extra file. The remaining growth is the mechanical `mdtablefix`
 reflow of the five documents `main` merged after this branch left its original
@@ -435,3 +435,12 @@ CodeScene delta then reported the tooling harness's `make` helper for excess
 arguments, so its expected status, bound and environment now travel as a
 `CommandOptions` value object shared with `run_command`. Every gate passes on
 this tree.
+
+Revision note (2026-11-15 follow-up): CodeRabbit's reconciliation reply found
+two remaining gaps. `GIT_COMMON_DIR` now joins the Git overrides the harness
+strips, so a fixture cannot commit into the caller's object store, and the
+regression check asserts the object-directory entries alongside the index. The
+mold check now requires an installation before every test step rather than
+anywhere in the job, with a reversed-order fixture covering a late install. The
+tooling suite contains 22 tests, and the measurement is 32 non-plan files,
+1,424 executable/test lines, 143 configuration lines and 991 prose lines.

@@ -16,7 +16,8 @@ ROOT = Path(__file__).resolve().parents[2]
 # Host settings that would redirect a fixture. Build flags and target
 # directories move its output, Makefile options change its target graph, and
 # the Git entries are repository-local overrides that Git applies whatever the
-# working directory is.
+# working directory is. `GIT_COMMON_DIR` moves the shared object store and refs,
+# so a fixture would otherwise commit into the caller's repository.
 EXCLUDED_ENVIRONMENT = frozenset(
     {
         "RUSTFLAGS",
@@ -29,6 +30,7 @@ EXCLUDED_ENVIRONMENT = frozenset(
         "GIT_DIR",
         "GIT_WORK_TREE",
         "GIT_INDEX_FILE",
+        "GIT_COMMON_DIR",
         "GIT_OBJECT_DIRECTORY",
         "GIT_ALTERNATE_OBJECT_DIRECTORIES",
     }
@@ -55,8 +57,9 @@ def child_environment(source: Mapping[str, str]) -> dict[str, str]:
 
     `BASH_ENV` matters because Make runs recipes through bash: a startup file
     named there can rewrite `PATH` inside the child and shadow fixture tools.
-    The `GIT_*` entries matter because a caller's `GIT_INDEX_FILE`, for
-    example, would make the fixture's `git add` write to the caller's index.
+    The `GIT_*` entries matter because a caller's `GIT_INDEX_FILE` or
+    `GIT_COMMON_DIR`, for example, would make the fixture's `git add` write to
+    the caller's index or object store.
     """
     return {
         key: value for key, value in source.items() if key not in EXCLUDED_ENVIRONMENT

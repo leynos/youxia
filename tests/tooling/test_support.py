@@ -18,6 +18,9 @@ class ChildEnvironmentTests(unittest.TestCase):
             "GIT_DIR": "/tmp/caller-repository",
             "GIT_WORK_TREE": "/tmp/caller-worktree",
             "GIT_INDEX_FILE": "/tmp/caller-index",
+            "GIT_COMMON_DIR": "/tmp/caller-common",
+            "GIT_OBJECT_DIRECTORY": "/tmp/caller-objects",
+            "GIT_ALTERNATE_OBJECT_DIRECTORIES": "/tmp/caller-alternate-objects",
         }
         environment = child_environment(hostile)
         self.assertEqual(
@@ -25,8 +28,14 @@ class ChildEnvironmentTests(unittest.TestCase):
             {"PATH": "/usr/bin", "HOME": "/home/example"},
             "Only overrides that would redirect the fixture may be dropped",
         )
-        self.assertNotIn(
+        for name in (
             "GIT_INDEX_FILE",
-            environment,
-            "A fixture's git commands must never write the caller's index",
-        )
+            "GIT_COMMON_DIR",
+            "GIT_OBJECT_DIRECTORY",
+            "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+        ):
+            self.assertNotIn(
+                name,
+                environment,
+                f"A fixture's git commands must never reach the caller's {name}",
+            )
