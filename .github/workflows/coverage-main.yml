@@ -32,6 +32,8 @@ concurrency:
 jobs:
   coverage-upload:
     runs-on: ubuntu-latest
+    # Configure this environment to permit deployments from main only.
+    environment: codescene
     permissions:
       contents: read
     env:
@@ -55,6 +57,10 @@ jobs:
         env:
           RUSTFLAGS: ""
         run: cargo binstall --no-confirm --locked cargo-nextest
+      - name: Run compile-time UI tests
+        run: make test-ui
+      - name: Exclude compile-time targets from coverage
+        run: scripts/exclude-ui-targets.sh
       - name: Log coverage linker configuration
         run: |
           echo "Coverage linker: clang"
@@ -64,6 +70,7 @@ jobs:
       - name: Test and Measure Coverage
         uses: leynos/shared-actions/.github/actions/generate-coverage@dbe2e22ceaf498d85512679ccded38be9dbe7777
         env:
+          CARGO_PROFILE_DEV_CODEGEN_BACKEND: llvm
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER: clang
           RUSTFLAGS: -Zpolonius=next -C link-arg=-fuse-ld=lld
           CFLAGS: -fuse-ld=lld
@@ -93,4 +100,3 @@ jobs:
           format: lcov
           mode: upload
           access-token: ${{ secrets.CS_ACCESS_TOKEN }}
-

@@ -1,6 +1,6 @@
 # Import Rust-template repository checks
 
-Status: DRAFT
+Status: COMPLETE
 
 ## Purpose / big picture
 
@@ -10,7 +10,7 @@ build capabilities, Markdown drift, unbounded nextest runs, and broken coverage
 workflow contracts. Success means the public gates run these checks and
 deliberately broken fixtures fail for the expected reasons.
 
-Implementation requires approval of this plan. No implementation has begun.
+Implementation was approved by the user on 2026-11-14 and is complete.
 
 ## Constraints
 
@@ -81,10 +81,11 @@ formatter; inspect the diff and preserve vendored guides.
 - [x] (2026-11-14 22:47Z) Inspect PR #168, current Makefile/workflows,
   build flags, tool availability, and shared checker documentation.
 - [x] Draft a bounded import and verification plan.
-- [ ] Obtain explicit plan approval.
-- [ ] M1: add failing tooling integration tests and import lint/preflight gates.
-- [ ] M2: integrate bounded tests, UI selection, Markdown and CV-005 gates.
-- [ ] M3: provision CI prerequisites, document contracts, validate and commit.
+- [x] Obtain explicit plan approval.
+- [x] M1: add failing tooling integration tests and import lint/preflight gates.
+- [x] M2: integrate bounded tests, UI selection, Markdown and CV-005 gates.
+- [x] (2026-11-14 23:57Z) M3: provision CI prerequisites, document contracts,
+  and pass final validation. Commit the validated import as one coherent change.
 
 ## Surprises & discoveries
 
@@ -98,6 +99,17 @@ doctest. There are no `tests/compile_*.rs` targets.
 The build already selects Cranelift through Cargo configuration. The upstream
 PR also changes frontend threading and backend flag composition; those changes
 are not necessary to import its checks and are excluded.
+
+Coverage initially failed because the unchanged Cargo development profile
+selects Cranelift independently of RUSTFLAGS. Make coverage and both hosted
+coverage steps now explicitly select LLVM through the profile environment
+override. A real application fixture rejects a Cranelift mutation and requires
+non-zero function execution counts in the resulting LCOV report. This restores
+the existing documented LLVM coverage policy without changing development.
+
+The pinned Rust toolchain supplies lld under its target-specific gcc-ld
+subdirectory. Local coverage passed with that directory prepended to PATH.
+Nextest 0.9.116 accepts both imported profiles; no runner upgrade was needed.
 
 ## Decision log
 
@@ -113,10 +125,22 @@ are not necessary to import its checks and are excluded.
 - 2026-11-14: Await approval before implementation, as required by the
   ExecPlan skill's approval gate.
 
+- 2026-11-14: Restore the existing LLVM coverage policy with
+  CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm. Keep the Cargo development profile
+  and compiler flags unchanged; document this representation difference.
+- 2026-11-14: Keep the index's existing plan link; no document was added or
+  renamed during implementation. Normalize only project Markdown and YAML
+  whitespace exposed by the new gates, including release.yml whitespace.
+
 ## Outcomes & retrospective
 
-Planning is complete. No gates or workflows have been changed. Implementation,
-negative controls, and hosted execution remain outstanding.
+Local implementation, negative controls and final review are complete. Hosted
+execution and environment protection are outside scope. The completed change
+affects 24 non-plan files: 1,108 executable/test changed lines, 143
+configuration lines and 230 prose lines, counting additions and deletions
+independently of this plan. No budget was exceeded. No Rust API, toolchain pin,
+development backend or shared contract was changed. All imported shell scripts
+and the estate YAML policy match their upstream source bytes.
 
 ## Context and orientation
 
@@ -295,4 +319,23 @@ dependencies unchanged.
 
 Revision note (2026-11-14): Draft after inspection of the pinned upstream PR,
 Youxia's existing flags and workflows, and local tool availability.
-Implementation awaits approval.
+Implementation started after explicit user approval.
+
+Revision note (2026-11-14): M1 and M2 passed their integration checks. The
+first suite failed against missing baseline Make targets. The baseline lane
+tests failed because compile targets ran with ordinary tests and no UI lane
+existed. The shared checker first failed for missing repository configuration.
+All 17 current tooling tests pass, including per-test and global timeout
+termination, checksum rejection, linker failures, lane selection and a PR
+credential leak. Coverage passed after the explicit LLVM override; the
+wrong-backend mutation fails with the LLVM-only instrumentation diagnostic.
+Final review passed.
+
+Revision note (2026-11-14 23:57Z): Mark complete after `make all typecheck`,
+`make markdownlint nixie`, Ruff formatting/lint checks and `git diff --check`
+passed. The suite contains 17 tooling tests, one Rust integration test and one
+doctest. `make coverage` produced LCOV using the pinned toolchain's lld on
+PATH. The pre-existing redundant-homepage Cargo manifest warning remains; all
+commands succeed. No hosted workflows, secrets or environment settings were
+modified remotely. The existing untracked nohup.out is user-owned and remains
+untouched; generated Cargo.lock and lcov.info are excluded from this commit.

@@ -1,0 +1,7 @@
+# Shared CV-005 workflow checks; policy remains in leynos/shared-actions.
+repository = "leynos/youxia"
+
+[selection]
+format = "lcov"
+output-path = "lcov.info"
+with-ratchet = "true"
