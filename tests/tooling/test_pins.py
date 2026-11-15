@@ -20,6 +20,17 @@ def fake_machine(test: RepositoryTest, name: str) -> dict[str, str]:
 class PinTests(RepositoryTest):
     """Keep a malformed pin a diagnostic rather than a silent value."""
 
+    def assert_components_refused(self, toolchain: str, expectation: str) -> None:
+        """Write a toolchain pin and assert the reader refuses it."""
+        self.write("rust-toolchain.toml", toolchain)
+        result = self.run_command(
+            "bash",
+            "-c",
+            READ_COMPONENTS,
+            options=CommandOptions(expected="failure"),
+        )
+        self.assertIn("could not read components", result.stdout, expectation)
+
     def test_missing_pin_file_is_reported(self) -> None:
         """An absent pin must name the file instead of reading as empty."""
         (self.repo / "tools/mold/VERSION").unlink()
@@ -73,55 +84,22 @@ class PinTests(RepositoryTest):
 
     def test_toolchain_without_components_is_refused(self) -> None:
         """A toolchain pin with no component list must not read as empty."""
-        self.write(
-            "rust-toolchain.toml",
+        self.assert_components_refused(
             '[toolchain]\nchannel = "nightly-2026-11-12"\n',
-        )
-        result = self.run_command(
-            "bash",
-            "-c",
-            READ_COMPONENTS,
-            options=CommandOptions(expected="failure"),
-        )
-        self.assertIn(
-            "could not read components",
-            result.stdout,
             "A missing component list must be reported",
         )
 
     def test_component_with_a_comma_is_refused(self) -> None:
         """A comma inside a component name would silently split the argument."""
-        self.write(
-            "rust-toolchain.toml",
+        self.assert_components_refused(
             '[toolchain]\ncomponents = ["clippy,rustfmt"]\n',
-        )
-        result = self.run_command(
-            "bash",
-            "-c",
-            READ_COMPONENTS,
-            options=CommandOptions(expected="failure"),
-        )
-        self.assertIn(
-            "could not read components",
-            result.stdout,
             "A comma inside a component name must be reported",
         )
 
     def test_component_with_whitespace_is_refused(self) -> None:
         """A space inside a component name would reach rustup as two words."""
-        self.write(
-            "rust-toolchain.toml",
+        self.assert_components_refused(
             '[toolchain]\ncomponents = ["clippy rustfmt"]\n',
-        )
-        result = self.run_command(
-            "bash",
-            "-c",
-            READ_COMPONENTS,
-            options=CommandOptions(expected="failure"),
-        )
-        self.assertIn(
-            "could not read components",
-            result.stdout,
             "A space inside a component name must be reported",
         )
 

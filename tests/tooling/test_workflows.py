@@ -249,6 +249,15 @@ def jobs_missing_mold(workflow_text: str) -> list[str]:
 class WorkflowTests(RepositoryTest):
     """Verify the public checker invocation without copying its private rules."""
 
+    def assert_fixture_is_missing_mold(self, fixture: str, expectation: str) -> None:
+        """Assert a fixture owns a test lane that the checker reports as unprovisioned."""
+        self.assertEqual(
+            [name for name, _ in test_lane_jobs(fixture)],
+            ["test"],
+            "The fixture must still own exactly one test lane",
+        )
+        self.assertEqual(jobs_missing_mold(fixture), ["test"], expectation)
+
     def test_workflows_running_the_test_lane_install_the_dev_linker(self) -> None:
         """Provision mold wherever a workflow exercises the public test lane.
 
@@ -281,66 +290,36 @@ class WorkflowTests(RepositoryTest):
 
     def test_mold_check_requires_installation_in_the_test_job(self) -> None:
         """An unrelated job's mold install must not satisfy a test-lane job."""
-        self.assertEqual(
-            [name for name, _ in test_lane_jobs(UNRELATED_MOLD_INSTALL)],
-            ["test"],
-            "Only the job that runs `make test` counts as a test lane",
-        )
-        self.assertEqual(
-            jobs_missing_mold(UNRELATED_MOLD_INSTALL),
-            ["test"],
+        self.assert_fixture_is_missing_mold(
+            UNRELATED_MOLD_INSTALL,
             "Installation in another job must not satisfy the check",
         )
 
     def test_mold_install_must_precede_the_test_step(self) -> None:
         """An install listed after `make test` cannot satisfy the lane."""
-        self.assertEqual(
-            [name for name, _ in test_lane_jobs(LATE_MOLD_INSTALL)],
-            ["test"],
-            "The late-install fixture still owns a test lane",
-        )
-        self.assertEqual(
-            jobs_missing_mold(LATE_MOLD_INSTALL),
-            ["test"],
+        self.assert_fixture_is_missing_mold(
+            LATE_MOLD_INSTALL,
             "A later installation must not satisfy an earlier test step",
         )
 
     def test_multiline_test_step_requires_the_linker(self) -> None:
         """A block-scalar lane must still be checked for the installation."""
-        self.assertEqual(
-            [name for name, _ in test_lane_jobs(MULTILINE_TEST_STEP)],
-            ["test"],
-            "A block-scalar test step must still own a test lane",
-        )
-        self.assertEqual(
-            jobs_missing_mold(MULTILINE_TEST_STEP),
-            ["test"],
+        self.assert_fixture_is_missing_mold(
+            MULTILINE_TEST_STEP,
             "A block-scalar lane without mold must be reported",
         )
 
     def test_mold_install_must_belong_to_an_action_step(self) -> None:
         """A `run:` step that only names the key installs nothing."""
-        self.assertEqual(
-            [name for name, _ in test_lane_jobs(MOLD_KEY_IN_A_RUN_STEP)],
-            ["test"],
-            "The fixture still owns a test lane",
-        )
-        self.assertEqual(
-            jobs_missing_mold(MOLD_KEY_IN_A_RUN_STEP),
-            ["test"],
+        self.assert_fixture_is_missing_mold(
+            MOLD_KEY_IN_A_RUN_STEP,
             "A key outside an action step must not satisfy the lane",
         )
 
     def test_mold_install_must_target_the_setup_action(self) -> None:
         """An unrelated action cannot install mold by accepting the key."""
-        self.assertEqual(
-            [name for name, _ in test_lane_jobs(MOLD_KEY_ON_AN_UNRELATED_ACTION)],
-            ["test"],
-            "The fixture still owns a test lane",
-        )
-        self.assertEqual(
-            jobs_missing_mold(MOLD_KEY_ON_AN_UNRELATED_ACTION),
-            ["test"],
+        self.assert_fixture_is_missing_mold(
+            MOLD_KEY_ON_AN_UNRELATED_ACTION,
             "Only the shared setup action can satisfy the installation",
         )
 
