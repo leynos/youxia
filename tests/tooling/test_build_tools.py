@@ -14,9 +14,16 @@ class BuildToolsTests(RepositoryTest):
         self.env["BUILD_TOOLS_PREFIX"] = str(self.repo)
         self.env["PATH"] = str(self.repo / "bin") + ":" + self.env["PATH"]
         self.write("bin/uname", "#!/bin/sh\necho Linux\n", executable=True)
-        self.write("bin/mold", "#!/bin/sh\necho 'mold 0.0.1'\n", executable=True)
-        self.write("bin/clang", "#!/bin/sh\necho clang\n", executable=True)
-        self.write("bin/ld.lld", "#!/bin/sh\necho lld\n", executable=True)
+        for tool, answer in (
+            ("mold", "mold 0.0.1"),
+            ("clang", "clang"),
+            ("ld.lld", "lld"),
+        ):
+            self.write(
+                f"bin/{tool}",
+                f"#!/bin/sh\necho {tool} >> calls\necho '{answer}'\n",
+                executable=True,
+            )
         self.write(
             "bin/curl", "#!/bin/sh\necho curl >> effects\nexit 99\n", executable=True
         )
@@ -60,6 +67,7 @@ esac
         self.write(
             "bin/cargo",
             f"""#!/bin/bash
+echo cargo >> calls
 [ "$1 $2" = "nextest --version" ] || exit 97
 {answer}
 """,
@@ -151,21 +159,46 @@ esac
                 self.assertIn(message, result.stdout)
                 self.write("bin/" + tool, original, executable=True)
 
+    def calls(self) -> list[str]:
+        """Read the tools invoked since the record was last cleared."""
+        path = self.repo / "calls"
+        if not path.exists():
+            return []
+        return path.read_text(encoding="utf-8").split()
+
     def test_toolchain_only_skips_the_linker_and_runner_checks(self) -> None:
-        """A toolchain-only check must not demand the linker or nextest."""
-        full = self.make("check-build-tools").stdout
-        self.assertIn(
-            "mold",
-            full,
-            "The full check must report the linker it inspects",
+        """A toolchain-only check must neither demand nor invoke the linkers."""
+        self.cargo("0.9.100")
+        self.make("check-build-tools")
+        self.assertEqual(
+            sorted(set(self.calls())),
+            ["cargo", "clang", "mold"],
+            "The full check must invoke the tools it reports",
         )
+        (self.repo / "calls").unlink()
         only = self.make("check-rust-toolchain").stdout
+        self.assertEqual(
+            self.calls(),
+            ["cargo"],
+            "A toolchain-only check must invoke no linker; the single runner"
+            " query is make's own parse-time probe of the test command",
+        )
         for absent in ("mold", "clang", "lld", "cargo-nextest"):
             self.assertNotIn(
                 absent,
                 only,
                 f"A toolchain-only check must not inspect {absent}",
             )
+
+    def test_coverage_only_invokes_the_coverage_linkers(self) -> None:
+        """Coverage needs lld, not mold, and still reports the runner."""
+        self.cargo("0.9.100")
+        self.make("check-coverage-tools")
+        self.assertEqual(
+            sorted(set(self.calls())),
+            ["cargo", "clang", "ld.lld"],
+            "A coverage check must invoke its linkers and the runner only",
+        )
 
     def test_coverage_only_does_not_require_the_cranelift_component(self) -> None:
         """Coverage builds with LLVM, so the backend is not a coverage tool."""
