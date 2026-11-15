@@ -468,3 +468,12 @@ cancellation and a cancellation race. `tools/nextest/VERSION` therefore pins
 coverage modes, and the users' and developers' guides state the floor.
 `cargo-nextest` remains optional: an absent runner keeps the `cargo test`
 fallback. The tooling suite contains 25 tests.
+
+Revision note (2026-11-15 termination grace): Review of the nextest pin found
+that the harness waited exactly the longest configured grace period, so it
+could kill nextest at the moment nextest escalates. `GRACEFUL_STOP_SECONDS` now
+allows fifteen seconds, and a contract test parses every `grace-period` in
+`.config/nextest.toml` and requires the harness wait to exceed the longest by
+at least five seconds. An end-to-end fixture installs a `SIGTERM` handler that
+ignores the signal, which forces nextest's own escalation, and asserts that the
+fixture writes no survival marker. The tooling suite contains 27 tests.
