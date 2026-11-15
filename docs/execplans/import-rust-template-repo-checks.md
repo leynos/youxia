@@ -483,3 +483,17 @@ nextest aborts a test binary that dies to `SIGTERM` immediately and reports any
 child that ignores the signal as a leaked handle, so the test process itself
 has to ignore the signal for the grace and `SIGKILL` path to run at all. The
 tooling suite contains 27 tests.
+
+Revision note (2026-11-15 isolation evidence): The approval review accepted the
+change but recorded two verification limits, both about evidence rather than
+behaviour. `tests/tooling/test_support.py` checked that the Git overrides were
+filtered, but not that a fixture's Git commands leave the caller's index and
+object store alone. It now builds a caller repository, aims every Git override
+at it, and shows that an unfiltered `git add` reaches the caller while the
+filtered one does not, so the test exercises the filter rather than an inert
+setup. `tests/tooling/test_workflows.py` checked only that an `install-mold`
+key appeared before each test step. Because the key is an input to the shared
+setup action, a `run:` step that merely names it installs nothing; an
+installation now counts only when the step holding the key invokes an action,
+with a `run:`-step fixture that the earlier check wrongly accepted. The tooling
+suite contains 29 tests.
