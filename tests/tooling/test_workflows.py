@@ -2,11 +2,14 @@
 
 import re
 import shutil
+from typing import NamedTuple
 
 from support import ROOT, CommandOptions, RepositoryTest
 
 JOB_HEADING = re.compile(r"(?m)^  (?P<name>[A-Za-z0-9_-]+):\s*$")
-TEST_LANE_STEP = re.compile(r"(?m)^\s*(?:-\s*)?run:.*\bmake test(?:\s|$)")
+RUN_KEY = re.compile(r"(?m)^(?P<indent>[ ]*)(?:- )?run:[ ]*(?P<value>.*)$")
+TEST_COMMAND = re.compile(r"^make test(?:\s|$)")
+BLOCK_MARKERS = frozenset({"|", ">", "|-", ">-", "|+", ">+"})
 MOLD_INSTALL = re.compile(r"(?m)^\s+install-mold:\s*['\"]?true['\"]?$")
 
 # Mold is installed in `lint` only. A check that searches the whole workflow
@@ -47,6 +50,84 @@ jobs:
           install-mold: 'true'
 """
 
+# Workflows commonly write commands under a block scalar. A pattern that reads
+# only the text after `run:` on the same line would miss this job entirely and
+# accept it without a linker installation.
+MULTILINE_TEST_STEP = """\
+name: Fixture
+
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo preparing
+          make test
+"""
+
+
+class _LineScan(NamedTuple):
+    """State that one workflow line leaves the scan in."""
+
+    body_indent: int | None
+    runs_test: bool
+
+
+def _indent(line: str) -> int:
+    """Count the leading spaces that decide block-scalar membership."""
+    return len(line) - len(line.lstrip())
+
+
+def _in_block_body(line: str, body_indent: int | None) -> bool:
+    """Say whether a line continues an already-open block scalar."""
+    if body_indent is None:
+        return False
+    return not line.strip() or _indent(line) > body_indent
+
+
+def _inline_command(line: str) -> tuple[int | None, str | None]:
+    """Split a `run:` line into any block it opens and any command it holds."""
+    run = RUN_KEY.match(line)
+    if run is None:
+        return None, None
+    value = run.group("value").strip()
+    if value in BLOCK_MARKERS:
+        return _indent(run.group("indent")), None
+    return None, value
+
+
+def _classify_line(line: str, body_indent: int | None) -> _LineScan:
+    """Track block state and report whether the line invokes `make test`."""
+    if _in_block_body(line, body_indent):
+        return _LineScan(body_indent, bool(TEST_COMMAND.match(line.strip())))
+    opened, command = _inline_command(line)
+    return _LineScan(opened, command is not None and bool(TEST_COMMAND.match(command)))
+
+
+def test_step_offsets(block: str) -> list[int]:
+    """Locate every `make test` invocation in one job, inline or in a block.
+
+    Workflows write the lane either as `run: make test` or as a `run: |` block
+    whose following, more indented lines hold the commands. Tracking the block
+    indent keeps a job's other steps and its comments out of the search.
+    """
+    offsets: list[int] = []
+    body_indent: int | None = None
+    offset = 0
+    for line in block.splitlines(keepends=True):
+        body_indent, runs_test = _classify_line(line, body_indent)
+        if runs_test:
+            offsets.append(offset)
+        offset += len(line)
+    return offsets
+
+
+def runs_test_lane(workflow_text: str) -> bool:
+    """Say whether a workflow or job invokes the public test lane."""
+    return bool(test_step_offsets(workflow_text))
+
 
 def test_lane_jobs(workflow_text: str) -> list[tuple[str, str]]:
     """Name the jobs that run `make test`, with each job's own block.
@@ -65,7 +146,7 @@ def test_lane_jobs(workflow_text: str) -> list[tuple[str, str]]:
             headings[index + 1][0] if index + 1 < len(headings) else len(workflow_text)
         )
         block = workflow_text[start:end]
-        if TEST_LANE_STEP.search(block):
+        if runs_test_lane(block):
             jobs.append((name, block))
     return jobs
 
@@ -79,7 +160,7 @@ def installs_mold_before_each_test_step(block: str) -> bool:
     installations = [match.start() for match in MOLD_INSTALL.finditer(block)]
     return all(
         any(installed < step for installed in installations)
-        for step in (match.start() for match in TEST_LANE_STEP.finditer(block))
+        for step in test_step_offsets(block)
     )
 
 
@@ -107,7 +188,7 @@ class WorkflowTests(RepositoryTest):
         lane_workflows = {
             path.name: path.read_text()
             for path in sorted((ROOT / ".github/workflows").glob("*.yml"))
-            if TEST_LANE_STEP.search(path.read_text())
+            if runs_test_lane(path.read_text())
         }
         self.assertTrue(
             lane_workflows,
@@ -149,6 +230,19 @@ class WorkflowTests(RepositoryTest):
             jobs_missing_mold(LATE_MOLD_INSTALL),
             ["test"],
             "A later installation must not satisfy an earlier test step",
+        )
+
+    def test_multiline_test_step_requires_the_linker(self) -> None:
+        """A block-scalar lane must still be checked for the installation."""
+        self.assertEqual(
+            [name for name, _ in test_lane_jobs(MULTILINE_TEST_STEP)],
+            ["test"],
+            "A block-scalar test step must still own a test lane",
+        )
+        self.assertEqual(
+            jobs_missing_mold(MULTILINE_TEST_STEP),
+            ["test"],
+            "A block-scalar lane without mold must be reported",
         )
 
     def test_shared_checker_rejects_a_pr_secret_leak(self) -> None:

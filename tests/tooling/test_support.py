@@ -14,6 +14,8 @@ class ChildEnvironmentTests(unittest.TestCase):
             "PATH": "/usr/bin",
             "HOME": "/home/example",
             "RUSTFLAGS": "-C target-cpu=native",
+            "CARGO_ENCODED_RUSTFLAGS": "-C\u001ftarget-cpu=native",
+            "CARGO_ENCODED_RUSTDOCFLAGS": "--cfg\u001fdocsrs",
             "BASH_ENV": "/tmp/startup.sh",
             "GIT_DIR": "/tmp/caller-repository",
             "GIT_WORK_TREE": "/tmp/caller-worktree",

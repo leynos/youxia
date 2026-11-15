@@ -1,5 +1,6 @@
 """Disposable repositories for public tooling integration tests."""
 
+import contextlib
 import os
 import shutil
 import signal
@@ -14,14 +15,18 @@ from typing import Literal
 ROOT = Path(__file__).resolve().parents[2]
 
 # Host settings that would redirect a fixture. Build flags and target
-# directories move its output, Makefile options change its target graph, and
-# the Git entries are repository-local overrides that Git applies whatever the
-# working directory is. `GIT_COMMON_DIR` moves the shared object store and refs,
-# so a fixture would otherwise commit into the caller's repository.
+# directories move its output; Cargo gives the encoded flag variables
+# precedence over their plain equivalents, so both spellings are dropped.
+# Makefile options change the target graph, and the Git entries are
+# repository-local overrides that Git applies whatever the working directory
+# is. `GIT_COMMON_DIR` moves the shared object store and refs, so a fixture
+# would otherwise commit into the caller's repository.
 EXCLUDED_ENVIRONMENT = frozenset(
     {
         "RUSTFLAGS",
         "RUSTDOCFLAGS",
+        "CARGO_ENCODED_RUSTFLAGS",
+        "CARGO_ENCODED_RUSTDOCFLAGS",
         "CARGO_TARGET_DIR",
         "CARGO_BUILD_TARGET_DIR",
         "MAKEFLAGS",
@@ -120,13 +125,7 @@ class RepositoryTest(unittest.TestCase):
             try:
                 output, _ = process.communicate(timeout=options.timeout)
             except BaseException:
-                # A failed test must also stop nested Cargo and test processes
-                # before its temporary checkout is removed.
-                try:
-                    os.killpg(process.pid, signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
-                process.communicate()
+                self._stop(process)
                 raise
         result = subprocess.CompletedProcess(arguments, process.returncode, output)
         if options.expected == 0:
@@ -151,6 +150,24 @@ class RepositoryTest(unittest.TestCase):
             *options,
             options=command,
         )
+
+    @staticmethod
+    def _stop(process: subprocess.Popen[str]) -> None:
+        """Stop a child and the tests it started before removing its checkout.
+
+        Nextest runs each test in its own process group, so a direct `SIGKILL`
+        can outrun the runner's own cleanup and leave orphaned tests behind.
+        Ask with `SIGTERM` first, give the runner a bounded grace period, then
+        escalate, and always reap the child so its exit status is collected.
+        """
+        for signal_number, grace in ((signal.SIGTERM, 10), (signal.SIGKILL, None)):
+            with contextlib.suppress(ProcessLookupError):
+                os.killpg(process.pid, signal_number)
+            try:
+                process.communicate(timeout=grace)
+                return
+            except subprocess.TimeoutExpired:
+                continue
 
     def track(self, *paths: str) -> None:
         """Stage fixtures because lint selection deliberately follows Git."""

@@ -204,11 +204,14 @@ fn hanging() {
 }
 """,
         )
-        for period, total, message in (
-            ("100ms", "3s", "timeout"),
-            ("180s", "100ms", "global timeout"),
+        for period, total, required, forbidden in (
+            # A per-test timeout must not be satisfied by the run-wide limit;
+            # nextest reports the global limit as "global timeout" instead, and
+            # both outcomes terminate the test and fail the command.
+            ("100ms", "3s", "timeout", "global timeout"),
+            ("180s", "100ms", "global timeout", None),
         ):
-            with self.subTest(limit=message):
+            with self.subTest(limit=required):
                 config.write_text(
                     text.replace('"180s"', f'"{period}"')
                     .replace('"5s"', '"100ms"')
@@ -220,8 +223,15 @@ fn hanging() {
                     "run",
                     options=CommandOptions(expected="failure", timeout=COMPILE_TIMEOUT),
                 )
+                output = result.stdout.lower()
                 self.assertIn(
-                    message,
-                    result.stdout.lower(),
+                    required,
+                    output,
                     "The configured limit must terminate a built test",
                 )
+                if forbidden is not None:
+                    self.assertNotIn(
+                        forbidden,
+                        output,
+                        "Per-test termination must not be reported as the global limit",
+                    )
