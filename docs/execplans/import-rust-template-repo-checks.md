@@ -165,12 +165,12 @@ Nextest 0.9.116 accepts both imported profiles; no runner upgrade was needed.
 
 Local implementation, negative controls and final review are complete. Hosted
 execution and environment protection are outside scope. The completed change
-affects 40 non-plan files: 3,023 executable/test changed lines, 315
+affects 40 non-plan files: 3,020 executable/test changed lines, 315
 configuration lines and 1,193 prose lines, counting additions and deletions
 independently of this plan and classifying `tests/` and `scripts/` as
 executable/test, other non-Markdown build and workflow files as configuration,
 and Markdown as prose. The 24-file, 1,200-executable-line and 250-prose-line
-budgets are exceeded by 16 files, 1,823 lines and 943 lines; configuration
+budgets are exceeded by 16 files, 1,820 lines and 943 lines; configuration
 stays within its 450-line budget. Earlier revisions of this section reported 32
 files and 1,376 executable/test lines; re-running the measurement command above
 against the base it names does not reproduce that figure, and the 2026-11-15
@@ -672,6 +672,8 @@ sets a hostile caller environment, demonstrates that an explicitly unfiltered
 child does reach the caller, then asserts the caller's `.git` is untouched when
 the environment is omitted. A disposable-copy mutant that dropped the
 sanitizing call failed that test. This supersedes the executable/test figure in
-the note above: the measurement now reports 40 files, 3,023 executable/test
+the note above: the measurement now reports 40 files, 3,020 executable/test
 lines, 315 configuration lines and 1,193 prose lines, so the executable and
-prose overruns are 1,823 and 943 lines.
+prose overruns are 1,820 and 943 lines. `ruff check --fix` and `ruff format`
+were then applied to `tests/tooling`, which corrected an unsorted import block
+and three formatting sites without changing behaviour.

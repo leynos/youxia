@@ -21,9 +21,7 @@ STEP_ITEM = re.compile(r"(?m)^(?P<indent>[ ]*)-[ ](?P<opening>.*)$")
 BLOCK_HEADER = re.compile(r"[|>](?:[+-][1-9]?|[1-9][+-]?)?[ ]*(?:#.*)?$")
 # A line whose value is a block header opens a body of quoted text, so the
 # lines below it are content rather than keys.
-BLOCK_OPENER = re.compile(
-    r"^[ ]*(?:-[ ]+)?[A-Za-z0-9_.-]+:[ ]*" + BLOCK_HEADER.pattern
-)
+BLOCK_OPENER = re.compile(r"^[ ]*(?:-[ ]+)?[A-Za-z0-9_.-]+:[ ]*" + BLOCK_HEADER.pattern)
 STEP_KEY = re.compile(r"^[ ]*(?P<key>[A-Za-z0-9_.-]+):")
 MOLD_INSTALL = re.compile(r"^[ ]+install-mold:[ ]*['\"]?true['\"]?[ ]*$")
 # `install-mold` is an input to the shared Rust setup action. An unrelated

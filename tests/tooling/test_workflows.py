@@ -20,6 +20,7 @@ from workflow_fixtures import (
 )
 from workflow_lane import jobs_missing_mold, runs_test_lane, test_lane_jobs
 
+
 class WorkflowTests(RepositoryTest):
     """Verify the public checker invocation without copying its private rules."""
 

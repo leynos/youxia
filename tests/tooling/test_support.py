@@ -92,9 +92,7 @@ class GitIsolationTests(unittest.TestCase):
         passed through unchanged; the isolation tests rely on that to show an
         unfiltered child really does reach the caller.
         """
-        child = (
-            child_environment(self.caller_environment) if env is None else env
-        )
+        child = child_environment(self.caller_environment) if env is None else env
         return subprocess.run(
             ("git", *arguments),
             cwd=repository,
