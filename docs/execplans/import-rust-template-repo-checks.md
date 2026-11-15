@@ -458,3 +458,13 @@ commands inside `run: |` blocks as well as inline `run:` lines, with a
 block-scalar fixture. The tooling suite contains 23 tests, and the measurement
 is 32 non-plan files, 1,376 executable/test lines, 314 configuration lines and
 991 prose lines.
+
+Revision note (2026-11-15 nextest pin): The review of the SIGTERM fix asked for
+a pinned `cargo-nextest` release. The nextest changelog places the relevant
+floor later than the review suggested: `global-timeout`, which
+`.config/nextest.toml` sets, arrived in 0.9.100, while 0.9.87 changed Windows
+cancellation and a cancellation race. `tools/nextest/VERSION` therefore pins
+0.9.100, `scripts/check-build-tools.sh` rejects an older runner in the full and
+coverage modes, and the users' and developers' guides state the floor.
+`cargo-nextest` remains optional: an absent runner keeps the `cargo test`
+fallback. The tooling suite contains 25 tests.
