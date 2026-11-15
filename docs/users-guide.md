@@ -78,8 +78,10 @@ doctest therefore fails the command.
    boundary and the `assert_cmd` child-process exception.
 6. Add diagnostic messages to assertions and crate/module/public-item
    documentation where the denied lints require it.
-7. Run `make check-fmt`, `make lint`, `make typecheck`, and `make test`. Fix
-   every warning rather than suppressing or downgrading it.
+7. Run `make check-fmt`, `make lint`, `make typecheck`, `make test`, and
+   `make test-ui`. The UI lane runs `tests/compile_*.rs` targets, which
+   `make test` leaves to it under nextest. Fix every warning rather than
+   suppressing or downgrading it.
 
 ## Makefile Targets
 

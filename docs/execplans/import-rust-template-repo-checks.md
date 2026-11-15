@@ -131,16 +131,31 @@ Nextest 0.9.116 accepts both imported profiles; no runner upgrade was needed.
 - 2026-11-14: Keep the index's existing plan link; no document was added or
   renamed during implementation. Normalize only project Markdown and YAML
   whitespace exposed by the new gates, including release.yml whitespace.
+- 2026-11-15: Review feedback requires the public `make test` lane to succeed
+  and the guidance to be accurate. Provision mold in Act validation, correct the
+  `make test` / `make test-ui` split in `AGENTS.md` and the migration steps,
+  and record the resulting three-file and seven-prose-line budget overruns. The
+  owner's instruction to fix the underlying issues and merge is the approval
+  the tolerance requires. The previous "24 non-plan files" outcome measurement
+  was wrong and is corrected here.
 
 ## Outcomes & retrospective
 
 Local implementation, negative controls and final review are complete. Hosted
 execution and environment protection are outside scope. The completed change
-affects 24 non-plan files: 1,108 executable/test changed lines, 143
-configuration lines and 230 prose lines, counting additions and deletions
-independently of this plan. No budget was exceeded. No Rust API, toolchain pin,
-development backend or shared contract was changed. All imported shell scripts
-and the estate YAML policy match their upstream source bytes.
+affects 27 non-plan files: 1,145 executable/test changed lines, 149
+configuration lines and 257 prose lines, counting additions and deletions
+independently of this plan. The 24-file and 250-prose-line budgets are exceeded
+by three files and seven lines. The import's own lint-formatting repairs
+already account for one extra file. The 2026-11-15 review instruction to fix
+the underlying failures added `.github/workflows/act-validation.yml`, so that
+hosted Act validation can link with mold, and corrected the test-lane guidance
+in `AGENTS.md` and the user guide. Reverting a required formatting repair,
+leaving hosted CI red, or keeping inaccurate guidance would each defeat the
+import, so the owner's instruction is recorded as the approval the tolerance
+requires. No Rust API, toolchain pin, development backend or shared contract
+was changed. All imported shell scripts and the estate YAML policy match their
+upstream source bytes.
 
 ## Context and orientation
 
@@ -354,3 +369,12 @@ can rewrite `PATH` inside Make recipes and shadow fixture tools, and the
 coverage fixture's cold compile receives a bounded multi-minute timeout.
 Format, lint, typecheck, unit, tooling, workflow-contract, Markdown and Mermaid
 gates pass again.
+
+Revision note (2026-11-15 assessment): CodeRabbit's completeness assessment
+raised three items. The file budget was already exceeded and misrecorded; the
+corrected measurement is 27 non-plan files with 257 prose lines, recorded in
+Outcomes with the owner-instruction approval basis. `AGENTS.md` and the user
+guide now describe the `make test` / `make test-ui` split. `make coverage` ran
+against this checkout at the assessed head with the pinned toolchain's bundled
+lld on `PATH` and wrote a non-empty `lcov.info`; the stub test exercises no
+library function, so its records report zero hits.
