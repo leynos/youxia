@@ -135,13 +135,16 @@ install tools. Explicit `make install-build-tools` installs pinned mold and
 Rust components; `make install-cranelift` installs only that backend.
 
 The full gate also needs yamllint, actionlint, ShellCheck, mdtablefix 0.6.1,
-`uv`, Python 3.11 or newer, `cargo-nextest`, and `cargo-llvm-cov`. `make all`
-runs the tooling contract tests, which exercise the nextest lanes and the
-coverage regression. `make coverage` refuses to run without nextest, because
-only nextest can exclude the compile-time targets from the instrumented run. For
-`make test`, nextest also provides per-test and whole-run timeouts; without
-it, Cargo runs all tests without those timeout guarantees. Coverage uses LLVM
-code generation even though development builds use Cranelift.
+`uv`, Python 3.11 or newer, `cargo-nextest` 0.9.100 or newer, and
+`cargo-llvm-cov`. The nextest floor comes from `global-timeout`, which that
+release added; `make check-build-tools` rejects an older runner because the
+profile would not load. `make all` runs the tooling contract tests, which
+exercise the nextest lanes and the coverage regression. `make coverage` refuses
+to run without nextest, because only nextest can exclude the compile-time
+targets from the instrumented run. For `make test`, nextest also provides
+per-test and whole-run timeouts; without it, Cargo runs all tests without those
+timeout guarantees. Coverage uses LLVM code generation even though development
+builds use Cranelift.
 
 ## Scheduled Mutation Testing
 

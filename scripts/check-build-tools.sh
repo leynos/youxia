@@ -85,6 +85,49 @@ check_coverage_linkers() {
   [ "$status" -eq 0 ]
 }
 
+# Compare dotted versions without GNU `sort -V`, which macOS does not ship.
+version_at_least() {
+  awk -v wanted="$1" -v installed="$2" 'BEGIN {
+    parts = split(wanted, want, ".")
+    have = split(installed, actual, ".")
+    for (part = 1; part <= parts; part++) {
+      if (part > have) exit 1
+      if (actual[part] + 0 > want[part] + 0) exit 0
+      if (actual[part] + 0 < want[part] + 0) exit 1
+    }
+    exit 0
+  }'
+}
+
+# The nextest profile sets `global-timeout`, which nextest added in 0.9.100 and
+# earlier releases reject. An absent cargo-nextest is not a failure: `make test`
+# falls back to `cargo test`, which simply omits every timeout nextest provides.
+check_nextest() {
+  local pinned=$1 output version
+  if ! command -v cargo >/dev/null 2>&1; then
+    note 'cargo not found on PATH; skipping the cargo-nextest check'
+    return 0
+  fi
+  if ! output=$(cargo nextest --version 2>/dev/null); then
+    note 'cargo-nextest not installed; make test falls back to cargo test'
+    return 0
+  fi
+  version=$(printf '%s\n' "$output" |
+    awk 'NR == 1 && $1 == "cargo-nextest" { print $2 }')
+  if [ -z "$version" ]; then
+    note 'cargo-nextest cannot report its version'
+    note 'reinstall it with: cargo binstall cargo-nextest'
+    return 1
+  fi
+  if ! version_at_least "$pinned" "$version"; then
+    note "cargo-nextest $version is older than the pinned $pinned"
+    note 'the nextest profile uses global-timeout, which that release rejects'
+    note 'upgrade it with: cargo binstall cargo-nextest'
+    return 1
+  fi
+  note "cargo-nextest $version"
+}
+
 check_toolchain() {
   local toolchain=$1 mode=$2 installed_toolchains installed_components required_components
   local component package_name status=0
@@ -133,7 +176,7 @@ check_toolchain() {
 }
 
 main() {
-  local status=0 mold_pin toolchain_pin mode=${1:-}
+  local status=0 mold_pin nextest_pin toolchain_pin mode=${1:-}
   case "$mode" in
     '' | --toolchain-only | --coverage-only) ;;
     *) fail "usage: $0 [--toolchain-only|--coverage-only]" ;;
@@ -143,10 +186,16 @@ main() {
   case "$mode" in
     '')
       mold_pin=$(mold_version) || return 1
+      nextest_pin=$(nextest_version) || return 1
       check_mold "$mold_pin" || status=1
       check_clang || status=1
+      check_nextest "$nextest_pin" || status=1
       ;;
-    --coverage-only) check_coverage_linkers || status=1 ;;
+    --coverage-only)
+      check_coverage_linkers || status=1
+      nextest_pin=$(nextest_version) || return 1
+      check_nextest "$nextest_pin" || status=1
+      ;;
     --toolchain-only) ;;
   esac
   check_toolchain "$toolchain_pin" "$mode" || status=1

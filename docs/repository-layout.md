@@ -44,7 +44,8 @@ compact and omits build output such as `target/`.
 │   └── tooling/
 ├── scripts/
 ├── tools/
-│   └── mold/
+│   ├── mold/
+│   └── nextest/
 ├── AGENTS.md
 ├── Cargo.toml
 ├── LICENSE
@@ -72,6 +73,9 @@ compact and omits build output such as `target/`.
   checks and the disposable coverage test-selection helper.
 
 - `tools/mold/`: Pins mold's version and archive checksums.
+
+- `tools/nextest/`: Pins the oldest `cargo-nextest` release whose profile
+  accepts the keys this repository sets.
 
 - `tests/tooling/`: Exercises public tooling boundaries in temporary Git
   repositories through the standard-library Python test runner.

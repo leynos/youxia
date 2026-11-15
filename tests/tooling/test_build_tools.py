@@ -44,6 +44,22 @@ esac
             executable=True,
         )
 
+    def cargo(self, version: str | None) -> None:
+        """Fake only the launcher's cargo-nextest version query."""
+        answer = (
+            f'echo "cargo-nextest {version}"; exit 0'
+            if version is not None
+            else "exit 1"
+        )
+        self.write(
+            "bin/cargo",
+            f"""#!/bin/bash
+[ "$1 $2" = "nextest --version" ] || exit 97
+{answer}
+""",
+            executable=True,
+        )
+
     def test_checker_accepts_available_tools_and_only_warns_on_mold_pin(self) -> None:
         result = self.make("check-build-tools")
         self.assertIn("does not match the pin", result.stdout)
@@ -52,6 +68,33 @@ esac
             "Checks must not install tools or download anything",
         )
         self.assertIn("component list", (self.repo / "queries").read_text())
+
+    def test_cargo_nextest_must_satisfy_the_pinned_release(self) -> None:
+        """The profile's `global-timeout` needs the release that added it."""
+        for version, message, expected in (
+            ("0.9.100", "cargo-nextest 0.9.100", 0),
+            ("0.9.99", "is older than the pinned 0.9.100", "failure"),
+        ):
+            with self.subTest(version=version):
+                self.cargo(version)
+                result = self.make(
+                    "check-build-tools", command=CommandOptions(expected=expected)
+                )
+                self.assertIn(
+                    message,
+                    result.stdout,
+                    "The check must report the pinned cargo-nextest release",
+                )
+
+    def test_absent_cargo_nextest_keeps_the_cargo_fallback(self) -> None:
+        """A missing runner is a supported fallback, not a broken toolchain."""
+        self.cargo(None)
+        result = self.make("check-build-tools")
+        self.assertIn(
+            "falls back to cargo test",
+            result.stdout,
+            "An absent cargo-nextest must be reported as the supported fallback",
+        )
 
     def test_missing_toolchain_and_components_are_failures(self) -> None:
         for has_toolchain, has_components, message in (
