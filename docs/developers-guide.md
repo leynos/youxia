@@ -61,13 +61,14 @@ full generated workflow can run locally on Linux: `clang`, `lld`, `mold`,
 `python3` 3.11 or newer, `uv`, `yamllint`, `actionlint`, ShellCheck,
 `mdtablefix` 0.6.1, `whitaker`, `cargo-nextest` and `cargo-llvm-cov`.
 `make lint` drives the YAML, workflow and shell linters as well as Whitaker,
-`make check-fmt` formats the Git-selected Markdown through `mdtablefix`, and
-`make test-workflow-contracts` and `make spelling` fetch their pinned tools with
-`uv`. The tooling contracts drive the nextest lanes and `make coverage`, so
-the runner and the coverage tool are needed for `make test-tooling`, and
-therefore for `make all`. `make audit` additionally needs `cargo-audit`, and
-the optional `make markdownlint` and `make nixie` targets need
-`markdownlint-cli2` and `nixie`; none of those three belongs to `make all`.
+`make check-fmt` checks the Git-selected Markdown through `mdtablefix --check`
+and only `make fmt` rewrites it, and `make test-workflow-contracts` and
+`make spelling` fetch their pinned tools with `uv`. The tooling contracts drive
+the nextest lanes and `make coverage`, so the runner and the coverage tool are
+needed for `make test-tooling`, and therefore for `make all`. `make audit`
+additionally needs `cargo-audit`, and the optional `make markdownlint` and
+`make nixie` targets need `markdownlint-cli2` and `nixie`; none of those three
+belongs to `make all`.
 
 ### Repository check boundaries
 

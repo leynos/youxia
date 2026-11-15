@@ -60,6 +60,23 @@ jobs:
           make test
 """
 
+# A block header may carry a trailing comment, as in `run: | # write a sample`.
+# A pattern that expects the marker alone misses the block, so its body reads as
+# step keys and the lane it runs is invisible to the checker.
+MULTILINE_TEST_STEP_WITH_COMMENTED_HEADER = """\
+name: Fixture
+
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: | # write a sample
+          echo preparing
+          make test
+"""
+
 # `install-mold` is an input to the shared setup action. An action without that
 # input ignores the key, so a check that accepts any action step would pass a
 # job that never installs the linker.
@@ -97,9 +114,10 @@ jobs:
       - run: make test
 """
 
-# A `run:` block can quote the action path and the input key inside a shell
-# script. Those lines are text rather than keys, so a check that searched a
-# step's raw text would accept a job that installs nothing.
+# A block can quote the action path or the input key inside a shell script, and
+# a `with:` value of the setup action can itself be a block. Both are text
+# rather than keys, so a check that read raw step text would accept a job that
+# installs nothing.
 MOLD_KEY_QUOTED_IN_A_BLOCK = """\
 name: Fixture
 
@@ -110,6 +128,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
+          cat <<'EOF' > snippet.yml
+          uses: leynos/shared-actions/.github/actions/setup-rust@0000000000000000000000000000000000000000
+          EOF
+          install-mold: 'true'
+      - uses: leynos/shared-actions/.github/actions/setup-rust@0000000000000000000000000000000000000000
+        with:
+          script: |
+            install-mold: 'true'
+      - run: make test
+"""
+
+# The same quoting can hide behind a commented block header, which is still a
+# block scalar. Missing the header makes those lines look like step keys.
+MOLD_KEY_QUOTED_IN_A_COMMENTED_BLOCK = """\
+name: Fixture
+
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: | # write a sample
           cat <<'EOF' > snippet.yml
           uses: leynos/shared-actions/.github/actions/setup-rust@0000000000000000000000000000000000000000
           EOF
@@ -130,6 +171,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
+          install-mold: 'true'
+      - run: make test
+"""
+
+# `install-mold` is an input, so it belongs under the action's `with:` mapping.
+# An `env:` variable of that name reaches the action as environment, not as the
+# input, so a check that matched any indented key would accept it.
+MOLD_KEY_UNDER_ENV = """\
+name: Fixture
+
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: leynos/shared-actions/.github/actions/setup-rust@0000000000000000000000000000000000000000
+        env:
           install-mold: 'true'
       - run: make test
 """
@@ -241,11 +300,27 @@ class WorkflowTests(RepositoryTest):
             "A block-scalar lane without mold must be reported",
         )
 
+    def test_multiline_test_step_with_a_commented_header_requires_the_linker(
+        self,
+    ) -> None:
+        """A block header may carry a comment without hiding the lane."""
+        self.assert_fixture_is_missing_mold(
+            MULTILINE_TEST_STEP_WITH_COMMENTED_HEADER,
+            "A commented block header must not hide the test lane",
+        )
+
     def test_mold_install_must_belong_to_an_action_step(self) -> None:
         """A `run:` step that only names the key installs nothing."""
         self.assert_fixture_is_missing_mold(
             MOLD_KEY_IN_A_RUN_STEP,
             "A key outside an action step must not satisfy the lane",
+        )
+
+    def test_mold_key_outside_the_with_mapping_installs_nothing(self) -> None:
+        """`env:` is not the action's input mapping, whatever it holds."""
+        self.assert_fixture_is_missing_mold(
+            MOLD_KEY_UNDER_ENV,
+            "The input must be a `with:` key of the setup action",
         )
 
     def test_mold_install_must_target_the_setup_action(self) -> None:
@@ -267,6 +342,15 @@ class WorkflowTests(RepositoryTest):
         self.assert_fixture_is_missing_mold(
             MOLD_KEY_QUOTED_IN_A_BLOCK,
             "A quoted action reference must not satisfy the installation",
+        )
+
+    def test_action_reference_quoted_in_a_commented_block_installs_nothing(
+        self,
+    ) -> None:
+        """A commented block header still opens a body of quoted text."""
+        self.assert_fixture_is_missing_mold(
+            MOLD_KEY_QUOTED_IN_A_COMMENTED_BLOCK,
+            "A quoted action reference in a commented block must not count",
         )
 
     def test_the_setup_action_may_list_its_input_before_uses(self) -> None:

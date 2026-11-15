@@ -14,11 +14,17 @@ from typing import NamedTuple
 JOB_HEADING = re.compile(r"(?m)^  (?P<name>[A-Za-z0-9_-]+):\s*$")
 RUN_KEY = re.compile(r"(?m)^(?P<indent>[ ]*)(?:- )?run:[ ]*(?P<value>.*)$")
 TEST_COMMAND = re.compile(r"^make test(?:\s|$)")
-BLOCK_MARKERS = frozenset({"|", ">", "|-", ">-", "|+", ">+"})
 STEP_ITEM = re.compile(r"(?m)^(?P<indent>[ ]*)-[ ](?P<opening>.*)$")
-# A line whose value is a block marker opens a body of quoted text. `run: |` is
-# the common case, and the chomping variants appear in real workflows too.
-BLOCK_OPENER = re.compile(r"^[ ]*(?:-[ ]+)?[A-Za-z0-9_.-]+:[ ]*[|>][+-]?[ ]*$")
+# A block header is `|` or `>`, an optional chomping and indentation indicator
+# in either order, then an optional comment. All three shapes are valid YAML:
+# `run: |`, `script: >-2`, and `run: | # write a sample`.
+BLOCK_HEADER = re.compile(r"[|>](?:[+-][1-9]?|[1-9][+-]?)?[ ]*(?:#.*)?$")
+# A line whose value is a block header opens a body of quoted text, so the
+# lines below it are content rather than keys.
+BLOCK_OPENER = re.compile(
+    r"^[ ]*(?:-[ ]+)?[A-Za-z0-9_.-]+:[ ]*" + BLOCK_HEADER.pattern
+)
+STEP_KEY = re.compile(r"^[ ]*(?P<key>[A-Za-z0-9_.-]+):")
 MOLD_INSTALL = re.compile(r"^[ ]+install-mold:[ ]*['\"]?true['\"]?[ ]*$")
 # `install-mold` is an input to the shared Rust setup action. An unrelated
 # action receiving the key ignores it, so only the reviewed action path may
@@ -48,13 +54,18 @@ def _in_block_body(line: str, body_indent: int | None) -> bool:
     return not line.strip() or _indent(line) > body_indent
 
 
+def _opens_block(value: str) -> bool:
+    """Say whether a mapping value is a block header rather than a scalar."""
+    return BLOCK_HEADER.match(value) is not None
+
+
 def _inline_command(line: str) -> tuple[int | None, str | None]:
     """Split a `run:` line into any block it opens and any command it holds."""
     run = RUN_KEY.match(line)
     if run is None:
         return None, None
     value = run.group("value").strip()
-    if value in BLOCK_MARKERS:
+    if _opens_block(value):
         return _indent(run.group("indent")), None
     return None, value
 
@@ -149,16 +160,44 @@ def action_lines(step: str) -> list[str]:
     return kept
 
 
-def _installs_mold(step: str) -> bool:
-    """Say whether a step hands the input key to the shared setup action.
+def _strip_item_opening(line: str) -> str:
+    """Move a step's opening dash aside so its keys share one column."""
+    return re.sub(r"^([ ]*)-[ ]", r"\1  ", line, count=1)
 
-    Both keys must be the step's own YAML. Reading every line of the step
-    rather than only the lines above the input keeps the answer independent of
-    key order, because a step mapping may list `with:` before `uses:`.
+
+def step_key_sections(step: str) -> dict[str, list[str]]:
+    """Group a step's own YAML lines by the mapping key that owns each one.
+
+    A step is a mapping whose keys share one column, and every more indented
+    line belongs to the key above it. Grouping keeps a key with the mapping
+    that carries it, so `install-mold` under `env:` cannot stand in for the
+    setup action's `with:` input. Reading every group rather than only the
+    lines above a key also keeps the answer independent of mapping-key order.
     """
-    lines = action_lines(step)
-    installs = any(MOLD_INSTALLING_ACTION.match(line) for line in lines)
-    requested = any(MOLD_INSTALL.match(line) for line in lines)
+    sections: dict[str, list[str]] = {}
+    key_indent: int | None = None
+    current: list[str] | None = None
+    for line in action_lines(step):
+        candidate = _strip_item_opening(line)
+        if not candidate.strip():
+            continue
+        key = STEP_KEY.match(candidate)
+        if key_indent is None:
+            key_indent = _indent(candidate)
+        if _indent(candidate) == key_indent and key is not None:
+            current = sections.setdefault(key.group("key"), [])
+        if current is not None:
+            current.append(candidate)
+    return sections
+
+
+def _installs_mold(step: str) -> bool:
+    """Say whether a step hands the input key to the shared setup action."""
+    sections = step_key_sections(step)
+    installs = any(
+        MOLD_INSTALLING_ACTION.match(line) for line in sections.get("uses", ())
+    )
+    requested = any(MOLD_INSTALL.match(line) for line in sections.get("with", ()))
     return installs and requested
 
 

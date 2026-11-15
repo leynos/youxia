@@ -615,3 +615,22 @@ the quoted-block fixture, searching only the lines above the input fails the
 reordered-keys fixture, and refusing an inline action opening fails the
 opening-key fixture. Every mutated guard broke its selected test. The tooling
 suite contains 67 tests.
+
+Revision note (2026-11-15 block and mapping shapes): The next review found two
+remaining issues. The block-header pattern required the marker alone, so
+`run: | # write a sample` opened no body and the lane it ran was invisible;
+`BLOCK_HEADER` now accepts the chomping and indentation indicators in either
+order followed by an optional comment, and the lane scan and the action scan
+share it. The check also matched `install-mold` anywhere in a step, so an
+`env:` variable of that name satisfied it; `step_key_sections` groups a step's
+own lines by the mapping key that owns them, and an installation now requires
+the key under `with:` and the action under `uses:`. The developers' guide now
+says `make check-fmt` checks Markdown through `mdtablefix --check` and only
+`make fmt` rewrites it. Three fixtures were added: a commented block header
+over the test lane, the key under `env:`, and a commented block quoting the
+action. The quoted-block fixture also nests a `with:` block, so reading block
+bodies as keys now fails it. Four guard mutations ran in disposable copies —
+block bodies read as keys, a comment-blind header, the key accepted from any
+mapping, and a step dash left in place — and each broke its selected test. All
+ten commit gates then passed sequentially on the final tree. The tooling suite
+contains 70 tests.
