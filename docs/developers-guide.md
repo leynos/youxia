@@ -77,11 +77,12 @@ The tooling import follows agent-template-rust PR #168 at commit
 to Make's build-tool boundary and its integration tests; use those entrypoints
 rather than duplicate pin parsing or installation logic. `make test-tooling`
 exercises public targets in temporary repositories with child-only
-environments, including real Cargo routing and timeout failures. The workflow
-scanner sits in `tests/tooling/workflow_lane.py`, which reads workflow text
-without a YAML dependency; `tests/tooling/workflow_fixtures.py` holds the
-sample workflows and `tests/tooling/test_workflows.py` the assertions that
-exercise them.
+environments, including real Cargo routing and timeout failures. Its Git
+fixtures sanitize an omitted environment, so a caller's `GIT_*` overrides
+cannot redirect a child into the caller's repository. The workflow scanner sits
+in `tests/tooling/workflow_lane.py`, which reads workflow text without a YAML
+dependency; `tests/tooling/workflow_fixtures.py` holds the sample workflows and
+`tests/tooling/test_workflows.py` the assertions that exercise them.
 
 The suite is standard-library `unittest`. Example tests carry one case per
 contract; `tests/tooling/test_properties.py` adds bounded generated cases from

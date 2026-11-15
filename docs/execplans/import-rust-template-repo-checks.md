@@ -165,12 +165,12 @@ Nextest 0.9.116 accepts both imported profiles; no runner upgrade was needed.
 
 Local implementation, negative controls and final review are complete. Hosted
 execution and environment protection are outside scope. The completed change
-affects 40 non-plan files: 2,981 executable/test changed lines, 315
-configuration lines and 1,192 prose lines, counting additions and deletions
+affects 40 non-plan files: 3,023 executable/test changed lines, 315
+configuration lines and 1,193 prose lines, counting additions and deletions
 independently of this plan and classifying `tests/` and `scripts/` as
 executable/test, other non-Markdown build and workflow files as configuration,
 and Markdown as prose. The 24-file, 1,200-executable-line and 250-prose-line
-budgets are exceeded by 16 files, 1,781 lines and 942 lines; configuration
+budgets are exceeded by 16 files, 1,823 lines and 943 lines; configuration
 stays within its 450-line budget. Earlier revisions of this section reported 32
 files and 1,376 executable/test lines; re-running the measurement command above
 against the base it names does not reproduce that figure, and the 2026-11-15
@@ -657,3 +657,21 @@ each broke its selected test. `make coverage` ran at this tree with the pinned
 toolchain's bundled `ld.lld` and wrote a 577-byte `lcov.info` with two `SF:`
 and four `DA:` records. All ten commit gates and `make coverage` passed. The
 tooling suite contains 71 tests.
+
+Revision note (2026-11-15 default Git environment): CodeRabbit rechecked the
+disposition of its environment-sanitization finding on `a425e64` and showed the
+earlier "fixed at `77ba78d`" reply to be wrong. `RepositoryTest` was sanitized,
+but `GitIsolationTests.git` still passed `env=None`, so its setup, commit and
+`reset --hard` children inherited whatever `GIT_DIR`, `GIT_INDEX_FILE` or
+`GIT_COMMON_DIR` the invoking process carried. The helper now sanitizes
+`self.caller_environment` when `env` is omitted, passes an explicitly supplied
+environment through unchanged, and `hostile_environment()` is built from the
+sanitized baseline rather than from `os.environ`. The new
+`test_default_git_environment_is_sanitized` test covers the default path: it
+sets a hostile caller environment, demonstrates that an explicitly unfiltered
+child does reach the caller, then asserts the caller's `.git` is untouched when
+the environment is omitted. A disposable-copy mutant that dropped the
+sanitizing call failed that test. This supersedes the executable/test figure in
+the note above: the measurement now reports 40 files, 3,023 executable/test
+lines, 315 configuration lines and 1,193 prose lines, so the executable and
+prose overruns are 1,823 and 943 lines.

@@ -5,6 +5,7 @@ import os
 import subprocess
 import tempfile
 import unittest
+from collections.abc import Mapping
 from pathlib import Path
 
 from support import child_environment
@@ -53,6 +54,9 @@ class GitIsolationTests(unittest.TestCase):
 
     def setUp(self) -> None:
         """Create a caller repository beside the fixture that will act on it."""
+        # Stands in for the invoking process's environment. A test can replace
+        # it with a hostile mapping without mutating `os.environ`.
+        self.caller_environment: Mapping[str, str] = os.environ
         directory = tempfile.TemporaryDirectory(prefix="youxia-git-isolation-")
         self.addCleanup(directory.cleanup)
         self.caller = Path(directory.name) / "caller"
@@ -75,13 +79,26 @@ class GitIsolationTests(unittest.TestCase):
         (self.fixture / "fixture.txt").write_text("fixture\n", encoding="utf-8")
 
     def git(
-        self, repository: Path, *arguments: str, env: dict[str, str] | None = None
+        self,
+        repository: Path,
+        *arguments: str,
+        env: Mapping[str, str] | None = None,
     ) -> subprocess.CompletedProcess[str]:
-        """Run one Git command in a repository and fail loudly on any error."""
+        """Run one Git command in a repository and fail loudly on any error.
+
+        An omitted environment is sanitized from the caller's environment, so
+        a fixture cannot inherit `GIT_DIR`, `GIT_INDEX_FILE` or another override
+        that points at the caller's repository. An explicit environment is
+        passed through unchanged; the isolation tests rely on that to show an
+        unfiltered child really does reach the caller.
+        """
+        child = (
+            child_environment(self.caller_environment) if env is None else env
+        )
         return subprocess.run(
             ("git", *arguments),
             cwd=repository,
-            env=env,
+            env=child,
             check=True,
             capture_output=True,
             text=True,
@@ -90,7 +107,7 @@ class GitIsolationTests(unittest.TestCase):
     def hostile_environment(self) -> dict[str, str]:
         """Aim every Git override at the caller, as a careless caller could."""
         common = self.caller / ".git"
-        return os.environ | {
+        return child_environment(os.environ) | {
             "GIT_INDEX_FILE": str(common / "index"),
             "GIT_COMMON_DIR": str(common),
             "GIT_OBJECT_DIRECTORY": str(common / "objects"),
@@ -141,4 +158,29 @@ class GitIsolationTests(unittest.TestCase):
             "A  fixture.txt",
             self.git(self.fixture, "status", "--porcelain", env=isolated).stdout,
             "The filtered fixture must stage into its own index",
+        )
+
+    def test_default_git_environment_is_sanitized(self) -> None:
+        """Omitting an environment must not hand the fixture the caller's state."""
+        self.caller_environment = self.hostile_environment()
+        pristine = self.caller_state()
+        self.git(self.fixture, "add", "-A", env=self.caller_environment)
+        self.assertNotEqual(
+            self.caller_state(),
+            pristine,
+            "The caller environment must redirect an explicitly unfiltered child",
+        )
+        self.git(self.caller, "reset", "-q", "--hard")
+        (self.fixture / "fixture.txt").write_text("second\n", encoding="utf-8")
+        restored = self.caller_state()
+        self.git(self.fixture, "add", "-A")
+        self.assertEqual(
+            self.caller_state(),
+            restored,
+            "An omitted environment must be sanitized before the child runs",
+        )
+        self.assertIn(
+            "A  fixture.txt",
+            self.git(self.fixture, "status", "--porcelain").stdout,
+            "The default environment must still let the fixture stage its own file",
         )
