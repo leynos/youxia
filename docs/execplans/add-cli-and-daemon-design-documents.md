@@ -40,8 +40,10 @@ df12-copy skills guide preservation, source attribution, and editing.
 - Keep SQLite as the initial baseline. Qualify Turso without making that
   comparison a prerequisite for the two spikes.
 - Preserve source evidence and distinguish proposed targets from measurements.
-- Leave implementation code, dependencies, build policy, and upstream services
-  outside this change.
+- Leave implementation code, dependencies, and upstream services outside this
+  change. The only continuous-integration edit is the review follow-up repair
+  recorded below: the existing `act-validation` job was missing the linker
+  inputs that every other workflow already passes.
 
 ## Work sequence
 
@@ -80,6 +82,8 @@ claim runtime performance, crash durability, or interoperability evidence.
 - [x] Complete and cross-review the RFC, roadmap, and lessons document.
 - [x] Finish structural and contract checks and record their outcomes.
 - [x] Prepare the reviewable documentation branch with validation limits.
+- [x] Apply the review follow-up: observation identity, act documentation, and
+  the act-validation linker repair.
 
 ## Decisions and discoveries
 
@@ -125,12 +129,36 @@ Completed checks:
   database integrity in a temporary database.
 - `git diff --check` and review of the documentation-only change scope.
 
-`make fmt`, `make check-fmt`, `make lint`, and `make test` could not run because
-the environment has no Cargo toolchain. Direct Markdown formatting covered the
-changed prose. `make nixie` could not render the two pre-existing diagrams: its
-expected headless browser was unavailable, and the installed Chromium could not
-create its required process socket. This change adds no diagrams. These limits
-do not constitute passed Rust or rendering checks.
+### Review follow-up
+
+The first review round raised two Minor documentation findings, both fixed and
+confirmed resolved on the published head.
+
+- The RFC observation identity now uses
+  `(profile_id, workspace_id, session_id)`, matching the `session_projection`
+  primary key and the observation dimensions table.
+- `docs/repository-layout.md` and `docs/developers-guide.md` now describe what
+  the `act-validation` workflow executes, and the workflow passes
+  `install-mold` and `install-clang-lld` to `setup-rust` so its cargo
+  invocations can link debug builds.
+
+### Current validation
+
+With the pinned nightly toolchain, these gates ran sequentially on that head
+and passed:
+
+- `make check-fmt`, `make lint`, `make typecheck`, and `make test` (nextest
+  plus doctests).
+- `make markdownlint`, including the pinned spelling and phrase gate;
+  `typos.toml` remained unchanged.
+- `make nixie`, which validated both Mermaid diagrams.
+- `actionlint` on the changed workflow.
+
+The hosted `build-test` and `act-validation` jobs also pass.
+
+An earlier draft of this record said `make fmt`, `make check-fmt`, `make lint`,
+`make test`, and `make nixie` were unavailable. Those limits applied to that
+earlier session only and are superseded by the results above.
 
 Contract checks establish structural validity and selected constraints. Runtime
 durability, interoperability, failure recovery, and performance remain proposed
