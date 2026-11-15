@@ -1,0 +1,65 @@
+# Proposed configuration contract, not an existing Lody or OrthoConfig API.
+# Validate relationships at startup; measure these starting budgets in spike 1.
+# The sole authority switch: observe or host. Observer composition exposes
+# no writer/dispatch capabilities, regardless of dormant hosting settings.
+mode = "observe"
+workspace = "replace-with-authorized-workspace-id"
+state_directory = "./state-youxia-observer"
+credential_reference = "os-keyring:youxia/workspace"
+
+[runtime]
+io_threads = 2
+replica_workers = 2
+maintenance_concurrency = 1
+concurrent_room_opens = 4
+
+[limits]
+queued_durable_bytes = 67108864
+queued_durable_messages = 4096
+consumer_buffer_bytes = 1048576
+observation_event_bytes = 262144
+rest_response_bytes = 2097152
+acp_frame_bytes = 8388608
+snapshot_compressed_bytes = 134217728
+snapshot_decompressed_bytes = 536870912
+# Large snapshots stream to bounded spool files. Queue only descriptors;
+# never acquire a payload permit larger than queued_durable_bytes.
+snapshot_spool_chunk_bytes = 1048576
+resident_document_soft_limit = 64
+replica_worker_memory_soft_bytes = 2147483648
+replica_worker_memory_hard_bytes = 3221225472
+durable_spool_bytes = 21474836480
+spool_reserve_bytes = 268435456
+
+[presence]
+# Used only in host mode; observation publishes no presence.
+interval_ms = 30000
+ttl_ms = 90000
+publication_deadline_ms = 5000
+overload_after_ms = 10000
+
+[recovery]
+anti_entropy_interval_ms = 300000
+retry_min_ms = 250
+retry_max_ms = 30000
+bootstrap_concurrency = 1
+
+[observation]
+api_version = 1
+retention_days = 7
+max_snapshot_rows = 1000
+snapshot_token_ttl_seconds = 60
+listen = "unix:./state-youxia-observer/observer.sock"
+
+[hosting]
+# These limits apply only when mode is host.
+max_agents = 1
+max_prompts_per_session = 1
+pending_permissions_per_session = 8
+permission_timeout_seconds = 300
+shutdown_grace_seconds = 30
+
+[logging]
+level = "info"
+include_payloads = false
+restson_trace = false

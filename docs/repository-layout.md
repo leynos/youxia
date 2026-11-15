@@ -1,8 +1,8 @@
 # Repository layout
 
-This document describes the generated Youxia repository layout. It
-is the canonical reference for where source code, tests, configuration,
-automation, and long-lived documentation belong.
+This document describes the generated Youxia repository layout. It is the
+canonical reference for where source code, tests, configuration, automation, and
+long-lived documentation belong.
 
 ## Top-level tree
 
@@ -52,23 +52,47 @@ compact and omits build output such as `target/`.
 
 - `.cargo/config.toml`: Configures Cargo defaults for local development,
   including Linux linker and code-generation settings.
+
 - `.github/dependabot.yml`: Configures automated dependency update checks.
-- `.github/workflows/act-validation.yml`: Runs the generated workflow
-  validation through `act` separately from main CI.
+
+- `.github/workflows/act-validation.yml`: Installs `act` and runs
+  `make test WITH_ACT=1` separately from main CI. No repository target
+  consumes `WITH_ACT` yet, so this job currently repeats the main test suite.
+
 - `.github/workflows/ci.yml`: Runs the generated project's continuous
   integration checks.
+
 - `.github/workflows/mutation-testing.yml`: Runs scheduled mutation testing
   through the shared `mutation-cargo` reusable workflow.
 
-- `.github/workflows/release.yml`: Builds and publishes binary release
-  artefacts for the application flavour.
+- `.github/workflows/release.yml`: Builds and publishes binary release artefacts
+  for the application flavour.
 
 - `docs/`: Holds long-lived reference documentation, guides, style rules, and
   design material.
+
 - `docs/contents.md`: Indexes the documentation set and should be updated when
   documentation files are added, renamed, or removed.
+
+- `docs/rfcs/`: Holds numbered proposals before architectural acceptance. RFC
+  0001 defines the proposed native CLI and daemon; it does not describe
+  capabilities implemented by the generated application.
+
+- `docs/roadmap.md`: Holds the current Goals, Ideas, Steps, and Tasks (GIST)
+  delivery sequence. Its task list supersedes the initial planning bundle.
+
+- `docs/contracts/`: Holds proposed, separately parseable interface, storage,
+  and configuration artefacts linked from the RFC. These are design inputs, not
+  installed migrations or executable daemon configuration.
+
+- `docs/execplans/`: Holds self-contained execution plans and their outcomes.
+
+- `docs/lessons-on-daemon-design-and-hot-path-preservation.md`: Records the
+  Comenq evidence and the resulting Youxia implementation requirements.
+
 - `docs/users-guide.md`: Explains how to use the generated project and its
   public build and test commands.
+
 - `docs/developers-guide.md`: Explains the contributor workflow and local
   tooling used to work on the generated project.
 
@@ -80,25 +104,35 @@ compact and omits build output such as `target/`.
 
 - `src/lib.rs`: Contains library support for application logic and doctested
   examples.
+
 - `src/main.rs`: Contains the application entrypoint and top-level executable
   wiring.
 
 - `tests/`: Holds integration and behavioural tests that exercise public
   behaviour.
+
 - `tests/stub.rs`: Keeps the generated test directory valid until real tests
   replace it.
+
 - `AGENTS.md`: Provides repository-specific working instructions for agents and
   contributors.
+
 - `Cargo.toml`: Defines package metadata, dependencies, lint policy, and Cargo
   configuration.
+
 - `LICENSE`: Records the project licence text.
-- `Makefile`: Provides the public build, lint, test, coverage, and
-  documentation validation commands.
+
+- `Makefile`: Provides the public build, lint, test, coverage, and documentation
+  validation commands.
+
 - `README.md`: Introduces the project and gives the shortest useful
   getting-started path.
-- `clippy.toml`: Configures Clippy lint behaviour that is not expressed
-  directly in `Cargo.toml`.
+
+- `clippy.toml`: Configures Clippy lint behaviour that is not expressed directly
+  in `Cargo.toml`.
+
 - `codecov.yml`: Configures coverage reporting behaviour.
+
 - `rust-toolchain.toml`: Pins the Rust toolchain channel and required
   components.
 
@@ -114,8 +148,8 @@ compact and omits build output such as `target/`.
   extending a Make target over documenting an ad hoc command.
 - Keep continuous integration workflow changes under `.github/workflows/` and
   dependency-update policy under `.github/dependabot.yml`.
-- Do not commit generated build output such as `target/`, coverage artefacts,
-  or local editor state.
+- Do not commit generated build output such as `target/`, coverage artefacts, or
+  local editor state.
 
 ## Updating this document
 

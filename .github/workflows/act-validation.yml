@@ -19,6 +19,11 @@ jobs:
           persist-credentials: false
       - name: Setup Rust
         uses: leynos/shared-actions/.github/actions/setup-rust@b804b69fa7f978cf9091b9d9bd5481d8ce58c2ea
+        with:
+          # `.cargo/config.toml` links debug builds with mold, so the runner
+          # needs both linkers before any cargo command runs.
+          install-mold: 'true'
+          install-clang-lld: 'true'
       - name: Install act
         run: |
           curl -fsSL "https://github.com/nektos/act/releases/download/${ACT_VERSION}/act_Linux_x86_64.tar.gz" |
