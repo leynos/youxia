@@ -476,4 +476,10 @@ allows fifteen seconds, and a contract test parses every `grace-period` in
 `.config/nextest.toml` and requires the harness wait to exceed the longest by
 at least five seconds. An end-to-end fixture installs a `SIGTERM` handler that
 ignores the signal, which forces nextest's own escalation, and asserts that the
-fixture writes no survival marker. The tooling suite contains 27 tests.
+fixture writes no survival marker. The fixture reports readiness before the
+harness signals it, so the test cannot pass merely because the runner had not
+started. One measured detail is recorded here because it shaped the fixture:
+nextest aborts a test binary that dies to `SIGTERM` immediately and reports any
+child that ignores the signal as a leaked handle, so the test process itself
+has to ignore the signal for the grace and `SIGKILL` path to run at all. The
+tooling suite contains 27 tests.
