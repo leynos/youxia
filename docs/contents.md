@@ -27,8 +27,8 @@ set.
 - [Repository layout](repository-layout.md) explains the generated project's
   top-level files, directories, and ownership boundaries.
 - [Documentation style guide](documentation-style-guide.md) defines the
-  spelling, structure, Markdown, Architecture Decision Record (ADR), Request for
-  Comments (RFC), and roadmap conventions used by this documentation set.
+  spelling, structure, Markdown, Architecture Decision Record (ADR), Request
+  for Comments (RFC), and roadmap conventions used by this documentation set.
 - [Polonius borrow-checker policy](polonius.md) records the nightly compiler
   contract, borrow-centric design rules, and audit tags used by this project.
 

@@ -1,8 +1,8 @@
 # Repository layout
 
 This document describes the generated Youxia repository layout. It is the
-canonical reference for where source code, tests, configuration, automation, and
-long-lived documentation belong.
+canonical reference for where source code, tests, configuration, automation,
+and long-lived documentation belong.
 
 ## Top-level tree
 
@@ -75,11 +75,12 @@ compact and omits build output such as `target/`.
 
 - `tests/tooling/`: Exercises public tooling boundaries in temporary Git
   repositories through the standard-library Python test runner.
+
 - `.github/dependabot.yml`: Configures automated dependency update checks.
 
 - `.github/workflows/act-validation.yml`: Installs `act` and runs
-  `make test WITH_ACT=1` separately from main CI. No repository target
-  consumes `WITH_ACT` yet, so this job currently repeats the main test suite.
+  `make test WITH_ACT=1` separately from main CI. No repository target consumes
+  `WITH_ACT` yet, so this job currently repeats the main test suite.
 
 - `.github/workflows/ci.yml`: Runs the generated project's continuous
   integration checks.

@@ -10,10 +10,11 @@ implement the daemon or establish its proposed runtime guarantees.
 
 ## Context and source material
 
-The source set consists of the 14 November 2026 Lody Rust reimplementation plan,
-its later 85-task GIST roadmap, and the accompanying observation, storage, and
-configuration contracts. The combined original plan also contains an obsolete
-67-task breakdown. The updated [roadmap](../roadmap.md) is the single task list.
+The source set consists of the 14 November 2026 Lody Rust reimplementation
+plan, its later 85-task GIST roadmap, and the accompanying observation,
+storage, and configuration contracts. The combined original plan also contains
+an obsolete 67-task breakdown. The updated [roadmap](../roadmap.md) is the
+single task list.
 
 The initial architecture becomes
 [RFC 0001](../rfcs/rfc-0001-native-rust-cli-and-daemon.md), with `Proposed`
@@ -71,8 +72,8 @@ TOML example, and execute the SQL in a temporary database. Exercise the changed
 nullability and immutable-payload constraints as focused contract checks.
 
 Keep transient verification output and environmental limitations in the pull
-request or this execution record. Do not add unrelated generated-file changes or
-claim runtime performance, crash durability, or interoperability evidence.
+request or this execution record. Do not add unrelated generated-file changes
+or claim runtime performance, crash durability, or interoperability evidence.
 
 ## Progress
 
@@ -95,8 +96,8 @@ claim runtime performance, crash durability, or interoperability evidence.
 - Use ordinary rowid tables with explicit non-integer key nullability. The
   source draft used `WITHOUT ROWID` without workload measurements.
 - Treat a restarted worker as unready until its incarnation reconciles durable
-  state. Treat an old CLI/daemon peer as a compatibility question before opening
-  an observation stream.
+  state. Treat an old CLI/daemon peer as a compatibility question before
+  opening an observation stream.
 
 ## Outcomes and validation record
 
