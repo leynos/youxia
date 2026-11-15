@@ -100,6 +100,11 @@ project rather than retyping them, because the checks assert their layout:
   runs; without it that target has nothing to discover.
 - `tools/mold/` and `tools/nextest/`, which hold the pinned versions and the
   mold checksums.
+- `.yamllint.yml` and `.yamllint-estate.yml`, which define the YAML lint policy
+  that `make lint-yaml` applies. `make lint-yaml` names no configuration file,
+  so yamllint discovers `.yamllint.yml` in the working directory; without these
+  files the target still passes, but it lints with yamllint's built-in defaults
+  instead of the repository policy.
 
 ## 5. Keep coverage on nextest
 
@@ -119,8 +124,8 @@ running through the ordinary lane.
 
 - [ ] Install `yamllint`, `actionlint`, ShellCheck, `mdtablefix` 0.6.1, `uv`
       and Python 3.11 or newer.
-- [ ] Copy the v0.2.0 `Makefile`, `.config/nextest.toml`, `scripts/`,
-      `tests/tooling/` and `tools/`.
+- [ ] Copy the v0.2.0 `Makefile`, `.config/nextest.toml`, `.yamllint.yml`,
+      `.yamllint-estate.yml`, `scripts/`, `tests/tooling/` and `tools/`.
 - [ ] Install `cargo-nextest` 0.9.100 or newer and `cargo-llvm-cov`, which the
       tooling contracts and `make coverage` need.
 - [ ] Add `make test-ui` to local and hosted validation.
