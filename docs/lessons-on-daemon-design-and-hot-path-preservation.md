@@ -4,9 +4,9 @@
 
 Comenq's implementation history exposes failure modes that Youxia's Rust
 command-line interface (CLI) and daemon must address explicitly. Moving work to
-another thread, restarting a worker, or maintaining an open socket can leave the
-promised capability stalled. The useful contract concerns progress through the
-whole dependency chain.
+another thread, restarting a worker, or maintaining an open socket can leave
+the promised capability stalled. The useful contract concerns progress through
+the whole dependency chain.
 
 This document records evidence inspected on 2026-11-15 against Comenq commit
 `19665d11fef9768fa294da6a7dcc5f30b789bc9a`, together with linked review
@@ -24,11 +24,11 @@ It does not establish that Youxia implements those requirements.
 
 _Table 1: Evidence classes and their limits._
 
-The source inspection confirms the described code and test assertions. No Comenq
-test suite or Youxia runtime benchmark accompanies this document. Reported
-validation in an upstream review remains attributed to that review. Requirements
-below are proposals for Youxia, not claims about current behaviour. The full
-architectural proposal remains authoritative for scope:
+The source inspection confirms the described code and test assertions. No
+Comenq test suite or Youxia runtime benchmark accompanies this document.
+Reported validation in an upstream review remains attributed to that review.
+Requirements below are proposals for Youxia, not claims about current
+behaviour. The full architectural proposal remains authoritative for scope:
 
 - [RFC 0001](rfcs/rfc-0001-native-rust-cli-and-daemon.md).
 - [Development roadmap](roadmap.md).
@@ -43,42 +43,43 @@ direct entry lookups for single-identifier operations.[^7]
 The later `await` implementation exposed a second boundary. An unknown
 identifier could scan the whole history while retaining the mutex needed by
 claims, completions, and queue commands. Running the scan on a blocking thread
-left this dependency intact. The repair captures pending state and a generation,
-releases the lock, scans history, then rechecks state and generation. Its
-regression test blocks the history lookup and requires an enqueue and completion
-to finish before releasing it.[^8]
+left this dependency intact. The repair captures pending state and a
+generation, releases the lock, scans history, then rechecks state and
+generation. Its regression test blocks the history lookup and requires an
+enqueue and completion to finish before releasing it.[^8]
 
-Youxia should prohibit bulk history reads, Loro exports, checkpoint preparation,
-and diagnostics from retaining a lock, actor turn, storage transaction, or
-admission credit needed by a control operation. A dedicated runtime cannot
-deliver its latency contract while it waits for one of those resources.
+Youxia should prohibit bulk history reads, Loro exports, checkpoint
+preparation, and diagnostics from retaining a lock, actor turn, storage
+transaction, or admission credit needed by a control operation. A dedicated
+runtime cannot deliver its latency contract while it waits for one of those
+resources.
 
 An expensive read should use bounded immutable inputs, a stable snapshot, or
 generation validation. Generation validation also needs a retry budget:
-continuous mutation must not restart an expensive calculation indefinitely. When
-the budget expires, the read should yield an explicit retryable outcome or move
-to an admitted snapshot path.
+continuous mutation must not restart an expensive calculation indefinitely.
+When the budget expires, the read should yield an explicit retryable outcome or
+move to an admitted snapshot path.
 
 Admission must precede task creation and blocking-work submission. At the
-inspected commit, Comenq spawns a task for each accepted connection; its storage
-wrapper submits blocking work that then acquires the shared mutex. The dedicated
-`await` limit does not constitute a general bound on queued connections or
-storage submissions.[^9] Youxia needs explicit count and byte limits at those
-ownership boundaries, including work waiting for execution.
+inspected commit, Comenq spawns a task for each accepted connection; its
+storage wrapper submits blocking work that then acquires the shared mutex. The
+dedicated `await` limit does not constitute a general bound on queued
+connections or storage submissions.[^9] Youxia needs explicit count and byte
+limits at those ownership boundaries, including work waiting for execution.
 
 The decisive test should hold bulk work behind a controllable barrier and
 require observable control progress before releasing it. For presence, the
-observer must see a fresh remote publication. A timer firing inside the liveness
-runtime does not prove that publication escaped a shared bottleneck.
+observer must see a fresh remote publication. A timer firing inside the
+liveness runtime does not prove that publication escaped a shared bottleneck.
 
 ## 3. Recover on every owner incarnation
 
-A Comenq worker could durably claim an entry, fail while completing or releasing
-it, and restart against the same open store. Claim recovery happened only when
-the store opened. The replacement worker therefore found no selectable work,
-while `list` continued to display plausible estimated times of arrival (ETAs).
-The fix runs recovery at every worker start and reconciles an interrupted
-completion before reclaiming abandoned claims.[^10]
+A Comenq worker could durably claim an entry, fail while completing or
+releasing it, and restart against the same open store. Claim recovery happened
+only when the store opened. The replacement worker therefore found no
+selectable work, while `list` continued to display plausible estimated times of
+arrival (ETAs). The fix runs recovery at every worker start and reconciles an
+interrupted completion before reclaiming abandoned claims.[^10]
 
 Youxia should give every owner an incarnation and a recovery entry point. A
 replacement must fence the previous generation, reconcile durable obligations,
@@ -134,14 +135,14 @@ cancellation is not confirmation of termination.
 
 ## 4. Wakeups must preserve retry policy
 
-Comenq's review sequence exposed three different promises. An initial retry wait
-ignored queue changes and delayed their effect. A repair made changes interrupt
-the wait, but then unrelated mutations could trigger another post before the
-cooldown expired. Retaining an in-memory deadline fixed that interaction.[^13] A
-later review found that restart lost the deadline and the displayed ETA came
-from different state. The merged repair records the failed attempt before
-releasing its claim and derives scheduling from the persisted activity
-record.[^14]
+Comenq's review sequence exposed three different promises. An initial retry
+wait ignored queue changes and delayed their effect. A repair made changes
+interrupt the wait, but then unrelated mutations could trigger another post
+before the cooldown expired. Retaining an in-memory deadline fixed that
+interaction.[^13] A later review found that restart lost the deadline and the
+displayed ETA came from different state. The merged repair records the failed
+attempt before releasing its claim and derives scheduling from the persisted
+activity record.[^14]
 
 Youxia should model four separate facts:
 
@@ -157,16 +158,16 @@ server-directed delay. Reconstruct monotonic deadlines under an explicit
 clock-discontinuity policy; an in-process `Instant` cannot serve as a durable
 timestamp.
 
-Comenq also recreated its exponential-backoff iterator after each failure, which
-repeatedly selected the first delay. The inspected supervisor retains the
+Comenq also recreated its exponential-backoff iterator after each failure,
+which repeatedly selected the first delay. The inspected supervisor retains the
 iterator across short failed runs and resets it after a stable run.[^12] Youxia
 should define when successful operation resets failure history and test
 persistent failure across multiple replacements.
 
-Retry tests should combine failures with mutation, refresh, reload, and restart.
-Assert the actual attempts and their eligibility, alongside the reported waiting
-reason. A test that only checks a calculated delay can miss a different path
-that bypasses it.
+Retry tests should combine failures with mutation, refresh, reload, and
+restart. Assert the actual attempts and their eligibility, alongside the
+reported waiting reason. A test that only checks a calculated delay can miss a
+different path that bypasses it.
 
 ## 5. Give cancellation and results enduring owners
 
@@ -176,13 +177,13 @@ regression test sends a partial frame, advances through a countdown tick, and
 then supplies the remainder. Recreating this reader would lose the prefix held
 in the cancelled future's local buffer.[^15]
 
-Youxia should audit each relevant `select!` boundary in ACP framing, Streams and
-Server-Sent Events (SSE) decoding, local observation, and worker inter-process
-communication (IPC). For every branch, identify which owner retains partially
-consumed bytes and protocol state when polling stops. Keep that state in an
-enduring decoder or retain a future whose cancellation behaviour the adapter has
-established. Test timer, shutdown, reconnect, and control events around
-fragmented input.
+Youxia should audit each relevant `select!` boundary in ACP framing, Streams
+and Server-Sent Events (SSE) decoding, local observation, and worker
+inter-process communication (IPC). For every branch, identify which owner
+retains partially consumed bytes and protocol state when polling stops. Keep
+that state in an enduring decoder or retain a future whose cancellation
+behaviour the adapter has established. Test timer, shutdown, reconnect, and
+control events around fragmented input.
 
 The same ownership rule applies after a durable operation begins. Comenq
 publishes its state-generation change inside the blocking mutation boundary,
@@ -194,16 +195,16 @@ operation and recorded disposition.
 
 ### 5.1. Distinguish identifiers from operation lifetimes
 
-Comenq's `AwaitToken` binds an existing wait to an entry incarnation and history
-boundary. A fresh lookup by reusable identifier has a different contract. A
-review finding that conflated these cases was withdrawn after inspection; it
-should not be cited as an unresolved lifetime defect.[^16]
+Comenq's `AwaitToken` binds an existing wait to an entry incarnation and
+history boundary. A fresh lookup by reusable identifier has a different
+contract. A review finding that conflated these cases was withdrawn after
+inspection; it should not be cited as an unresolved lifetime defect.[^16]
 
 Youxia should fence permission replies, prompt results, child-exit reports,
 refresh results, and projection results with the relevant incarnation or
-generation. For shared refresh work, cancelling one waiter must not cancel other
-consumers' operation. For a delayed permission reply, the session ID alone must
-not authorize a replacement request.
+generation. For shared refresh work, cancelling one waiter must not cancel
+other consumers' operation. For a delayed permission reply, the session ID
+alone must not authorize a replacement request.
 
 ## 6. Reserve capacity for accepted work to finish
 
@@ -227,8 +228,8 @@ already-accepted operations through their production owners.
 
 Configured limits and physical disk exhaustion are separate faults. Another
 process can consume reserved filesystem space. An actual `ENOSPC` must produce
-an explicit storage-blocked capability without false acknowledgement or deletion
-of unreconciled obligations. Admission accounting does not replace
+an explicit storage-blocked capability without false acknowledgement or
+deletion of unreconciled obligations. Admission accounting does not replace
 crash-recovery and disk-failure tests.
 
 These requirements apply to both SQLite and Turso. The Comenq evidence concerns
@@ -238,11 +239,12 @@ qualification boundary for alternatives.
 
 ## 7. Negotiate capabilities before the first observation stream
 
-Comenq issue #242 reports a newer CLI communicating with an older running daemon
-installed at another path. Ordinary commands worked, but `await` returned a
-connection-loss error for queued, completed, and nonexistent identifiers. The
-merged repair separates legacy rejection, absent initial reply, stream loss, and
-an explicit daemon error. It does not add a handshake.[^4]
+Comenq issue #242 reports a newer CLI communicating with an older running
+daemon installed at another path. Ordinary commands worked, but `await`
+returned a connection-loss error for queued, completed, and nonexistent
+identifiers. The merged repair separates legacy rejection, absent initial
+reply, stream loss, and an explicit daemon error. It does not add a
+handshake.[^4]
 
 Youxia should establish protocol compatibility before opening an observation
 stream or admitting a command. The handshake should advertise the information
@@ -259,9 +261,9 @@ needed to interpret the peer:
 _Table 3: Proposed local IPC negotiation information._
 
 Protocol and capability compatibility should govern admission. Build versions
-support diagnosis. Minimal status output should identify the running daemon and,
-where available, its executable or service identity; printing only the newly
-installed CLI version would leave the reported failure unexplained.
+support diagnosis. Minimal status output should identify the running daemon
+and, where available, its executable or service identity; printing only the
+newly installed CLI version would leave the reported failure unexplained.
 
 An unrecognized or absent handshake must yield a precise compatibility error.
 The client must not probe support by submitting an operation with side effects.
@@ -281,14 +283,14 @@ Youxia should define directly testable command-admission, delivery-state,
 permission, and freshness rules before separate agents implement the adapters.
 Check the dependency boundary mechanically: domain policy should not depend on
 sockets, a database driver, Loro, or the async runtime. Adapters translate
-protocol and storage representations; storage owners execute guarded transitions
-atomically.
+protocol and storage representations; storage owners execute guarded
+transitions atomically.
 
 Classify operations by effects. Claiming work is a command even when its name
 resembles a query. A repository interface must not split an atomic transition
 into independently locked reads and writes. Introduce only the ports needed for
-identified external effects and test seams; a generic application framework does
-not follow from this lesson.
+identified external effects and test seams; a generic application framework
+does not follow from this lesson.
 
 ## 9. Treat configuration semantics as a public contract
 
@@ -327,13 +329,13 @@ and distinguish configuration errors from unrelated startup failures.
 Comenq's retrospective records a precedence test whose expected value matched
 the default, a startup test that could pass on unrelated failures, and proposed
 mutation checks described before execution. The repairs used distinguishing
-inputs, asserted identifying diagnostics, and recorded executed checks.[^18] The
-inspected startup contract tests now check the specific token-error message as
-well as process status and output channels.[^19]
+inputs, asserted identifying diagnostics, and recorded executed checks.[^18]
+The inspected startup contract tests now check the specific token-error message
+as well as process status and output channels.[^19]
 
 For each Youxia reliability promise, identify a plausible incorrect
-implementation and a small test that rejects it. Use controllable barriers, fake
-clocks, and fault injection where practical. Assertions should concern the
+implementation and a small test that rejects it. Use controllable barriers,
+fake clocks, and fault injection where practical. Assertions should concern the
 promised effect at its owner boundary.
 
 | Proposed contract                     | Discriminating witness                                                                 |

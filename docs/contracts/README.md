@@ -22,9 +22,9 @@ namespace now use Youxia.
 
 SQLite remains the initial engine. Ordinary rowid tables replace the draft's
 broad use of `WITHOUT ROWID`, and every non-integer primary-key column declares
-`NOT NULL`. This establishes a baseline for measurement and retains the intended
-key semantics. RFC 0001 §13.1 records the rationale and the optional Turso
-qualification gate.
+`NOT NULL`. This establishes a baseline for measurement and retains the
+intended key semantics. RFC 0001 §13.1 records the rationale and the optional
+Turso qualification gate.
 
 The storage owner must acknowledge durable acceptance only after the explicit
 transaction commits with `synchronous=FULL`. It must configure and verify
@@ -36,8 +36,9 @@ The SQL comments specify transaction boundaries that table constraints cannot
 enforce: incoming bytes with their cursor, projection with observation events,
 snapshot with pending updates, and producer allocation with immutable outbox
 bytes. Concrete retry-policy records, admission accounting, and adapter
-migrations belong to their implementation tasks in the [roadmap](../roadmap.md).
-The initial schema deliberately leaves those adapter-specific records open.
+migrations belong to their implementation tasks in the
+[roadmap](../roadmap.md). The initial schema deliberately leaves those
+adapter-specific records open.
 
 ## Validation boundary
 

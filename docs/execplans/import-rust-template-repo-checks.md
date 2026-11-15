@@ -1,0 +1,689 @@
+# Import Rust-template repository checks
+
+Status: COMPLETE
+
+## Purpose / big picture
+
+Bring the checks from agent-template-rust PR #168 into Youxia so local Make
+targets and CI detect malformed YAML, invalid Actions, shell errors, missing
+build capabilities, Markdown drift, unbounded nextest runs, and broken coverage
+workflow contracts. Success means the public gates run these checks and
+deliberately broken fixtures fail for the expected reasons.
+
+Implementation was approved by the user on 2026-11-14 and is complete.
+
+## Constraints
+
+Work in `/mnt/c/Users/Payton/youxia` on `import-rust-template-repo-checks`,
+starting at commit `4ea427a`.
+
+Preserve the dated `nightly-2026-11-12` toolchain, Polonius analysis, current
+Cranelift selection, Linux mold linking, and LLVM/lld coverage. Do not import
+unrelated release changes, Dependabot grouping or automation, Copier machinery,
+Netsuke, Ninja, or the template's nightly-date change. Do not change Rust
+application APIs or add application dependencies.
+
+Use the existing Makefile and shared action interfaces. Import the estate
+yamllint base verbatim; the local overlay may extend it and add ignores only.
+Preflight must not install tools or download a Rust toolchain. Installers are
+explicit commands, never dependencies of validation targets.
+
+Keep the six shared reference documents and two tagged dependency guides
+unchanged. Formatting existing project guides is permitted where the new
+Markdown formatting gate exposes baseline drift. Never edit generated
+`typos.toml` manually.
+
+## Tolerances
+
+Exclude this ExecPlan from the following budgets. Allow at most 24 changed
+files: up to 1,200 added or changed executable/test lines, 450 configuration
+lines, and 250 prose lines. Measure these categories independently using
+`git diff --numstat` and review changed lines, including deletions. Imported
+scripts count towards executable lines. Spare capacity cannot offset another
+category's overrun.
+
+Allow only the tools already selected upstream: yamllint, actionlint,
+shellcheck, mdtablefix, nextest, the pinned shared CV-005 checker, and their
+existing runtime dependencies. A standard-library Python test harness needs no
+new application crate or package manifest. Stop for approval before adding any
+other dependency, changing toolchain/backend policy, weakening a shared
+contract, or exceeding a budget. Escalate after three unsuccessful attempts at
+the same failing milestone or two hours on one milestone.
+
+## Risks
+
+The source PR is open and can change. Severity medium, likelihood high. Import
+from its inspected head, not a moving branch, and record any later source
+change before using it.
+
+Nextest on this host is 0.9.116. Severity medium, likelihood medium. Exercise
+the actual nextest configuration before adopting it; document and explicitly
+provision an adequate version if required rather than silently dropping bounds.
+
+The coverage linker `ld.lld` was not found on PATH during reconnaissance.
+Severity medium, likelihood high. The coverage preflight must report this; use
+the documented OS installation or an existing versioned linker through a narrow
+PATH adjustment during validation. Never turn a missing linker into a passing
+coverage gate.
+
+The shared checker requires the publisher's `codescene` environment. Severity
+medium, likelihood medium. Import the workflow declaration and document the
+required main-only environment protection. Repository settings, secret moves,
+publishing, and remote dispatch are outside this change. Report unverified
+hosted protection separately from local checker success.
+
+A new formatting gate reveals pre-existing Markdown wrapping. Severity low,
+likelihood high. Limit normalization to files selected by the same Git-aware
+formatter; inspect the diff and preserve vendored guides.
+
+## Progress
+
+- [x] (2026-11-14 22:47Z) Inspect PR #168, current Makefile/workflows,
+  build flags, tool availability, and shared checker documentation.
+- [x] Draft a bounded import and verification plan.
+- [x] Obtain explicit plan approval.
+- [x] M1: add failing tooling integration tests and import lint/preflight gates.
+- [x] M2: integrate bounded tests, UI selection, Markdown and CV-005 gates.
+- [x] (2026-11-14 23:57Z) M3: provision CI prerequisites, document contracts,
+  and pass final validation. Commit the validated import as one coherent change.
+
+## Surprises & discoveries
+
+PR #168 changes 71 files, including parent-template tests and release policy.
+Youxia is a generated application, so importing the entire PR is inappropriate.
+
+Youxia currently has no tooling harness, nextest configuration, YAML policy, or
+workflow-contract configuration. Its Rust test suite contains one stub and one
+doctest. There are no `tests/compile_*.rs` targets.
+
+The build already selects Cranelift through Cargo configuration. The upstream
+PR also changes frontend threading and backend flag composition; those changes
+are not necessary to import its checks and are excluded.
+
+Coverage initially failed because the unchanged Cargo development profile
+selects Cranelift independently of RUSTFLAGS. Make coverage and both hosted
+coverage steps now explicitly select LLVM through the profile environment
+override. A real application fixture rejects a Cranelift mutation and requires
+non-zero function execution counts in the resulting LCOV report. This restores
+the existing documented LLVM coverage policy without changing development.
+
+The pinned Rust toolchain supplies lld under its target-specific gcc-ld
+subdirectory. Local coverage passed with that directory prepended to PATH.
+Nextest 0.9.116 accepts both imported profiles; no runner upgrade was needed.
+
+## Decision log
+
+- 2026-11-14: Pin the reference to PR head
+  `206c82d52b276903e4f9f1df0ebf85a2938a99bb`; base
+  `a377f65bb50a50b9cd803a6ed650ab61591b9c58`. This preserves a reproducible
+  source while the PR remains open.
+- 2026-11-14: Import generated-project checks and supporting repair commands.
+  Reuse upstream shell helpers rather than introduce another preflight
+  abstraction. Their permitted callers are Make targets and tooling tests.
+- 2026-11-14: Keep the shared workflow rules in their upstream package.
+  Configure Youxia through `.github/cv005.toml`; do not copy or weaken rules.
+- 2026-11-14: Await approval before implementation, as required by the
+  ExecPlan skill's approval gate.
+
+- 2026-11-14: Restore the existing LLVM coverage policy with
+  CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm. Keep the Cargo development profile
+  and compiler flags unchanged; document this representation difference.
+- 2026-11-14: Keep the index's existing plan link; no document was added or
+  renamed during implementation. Normalize only project Markdown and YAML
+  whitespace exposed by the new gates, including release.yml whitespace.
+- 2026-11-15: Review feedback requires the public `make test` lane to succeed
+  and the guidance to be accurate. Provision mold in Act validation, correct the
+  `make test` / `make test-ui` split in `AGENTS.md` and the migration steps,
+  and record the resulting budget overruns. The owner's instruction to fix the
+  underlying issues and merge is the approval the tolerance requires. The
+  previous "24 non-plan files" outcome measurement was wrong and is corrected
+  here.
+- 2026-11-15: The first full review found that coverage could drop the checked
+  linker path and silently instrument compile-time targets, that the fixture
+  environment could carry the caller's Git index, that the mold check searched
+  the whole workflow rather than the job running `make test`, and that the
+  shared test helpers lacked annotations. Fix all four with regression
+  fixtures. The resulting executable-line overrun is recorded in Outcomes under
+  the same owner-instruction approval.
+- 2026-11-15: Rebase onto `main` at `2f9b01e`, which merged the native daemon
+  RFC, roadmap and contract documents through PR #6. Resolve
+  `docs/repository-layout.md` by keeping main's wrapping and inserting this
+  import's path entries, and keep main's
+  `.github/workflows/act-validation.yml`, which already installs mold and
+  clang/lld. This branch therefore contributes only the workflow test and the
+  harness changes from its linker commit, and that commit's message says so.
+  Re-measure Outcomes against the new base.
+- 2026-11-15: The next review found the workflow check reading raw step text and
+  the outcome measurement stale. Decide whether a step installs mold from its
+  YAML keys with block-scalar bodies dropped, and accept either key order,
+  rather than from a text window before the input. Move the scanner into
+  `tests/tooling/workflow_lane.py` so the growing fixture set keeps the test
+  module within the 400-line limit, and re-measure Outcomes against the PR base
+  instead of carrying the earlier figure forward.
+
+## Outcomes & retrospective
+
+Local implementation, negative controls and final review are complete. Hosted
+execution and environment protection are outside scope. The completed change
+affects 40 non-plan files: 3,046 executable/test changed lines, 315
+configuration lines and 1,193 prose lines, counting additions and deletions
+independently of this plan and classifying `tests/` and `scripts/` as
+executable/test, other non-Markdown build and workflow files as configuration,
+and Markdown as prose. The 24-file, 1,200-executable-line and 250-prose-line
+budgets are exceeded by 16 files, 1,846 lines and 943 lines; configuration
+stays within its 450-line budget. Earlier revisions of this section reported 32
+files and 1,376 executable/test lines; re-running the measurement command above
+against the base it names does not reproduce that figure, and the 2026-11-15
+measurement revision note records the counts above and why its first pass was
+still short. The growth is the imported tooling suite, the review repairs
+recorded in the revision notes, and the mechanical `mdtablefix` reflow of the
+five documents `main` merged after this branch left its original base (RFC
+0001, the roadmap, the daemon-design lessons, its execplan and the contracts
+README) together with the two shared documents the formatter also rewrapped;
+those rewrites moved lines without changing words. The 2026-11-15 review
+instructions to fix the underlying failures provisioned the Act validation
+linkers, which `main` now supplies, corrected the test-lane guidance, and
+required the coverage guard, per-job workflow check, fixture environment
+filtering, helper type annotations and workflow-check repairs that the reviews
+identified. Reverting a required formatting repair, leaving hosted CI red,
+keeping inaccurate guidance, or leaving those defects unfixed would each defeat
+the import, so the owner's instruction is recorded as the approval the
+tolerance requires, and it covers the re-measured overruns. No Rust API,
+toolchain pin, development backend or shared contract was changed. All imported
+shell scripts and the estate YAML policy match their upstream source bytes.
+
+## Context and orientation
+
+`Makefile` owns public validation. `.cargo/config.toml` and
+`rust-toolchain.toml` own compiler defaults. `.github/workflows/ci.yml` checks
+PRs; `coverage-main.yml` owns CodeScene upload and the coverage baseline. A
+baseline is the saved coverage measurement used for comparisons.
+
+CV-005 is the shared contract separating PR coverage from main-only CodeScene
+publication. Its checker inspects workflow structure; it does not establish
+that hosted jobs ran or repository environment protections exist.
+
+`docs/contents.md` indexes project documents. Update `docs/developers-guide.md`
+for internal tooling boundaries, `docs/users-guide.md` for public commands, and
+`docs/repository-layout.md` for added paths. There is no roadmap or primary
+design document in this checkout; do not invent a completed roadmap item.
+
+## Conformance basis
+
+The source is
+[agent-template-rust PR #168]( https://github.com/leynos/agent-template-rust/pull/168),
+at the head above. Use its `template/Makefile.jinja`, `template/scripts/`,
+`template/.config/nextest.toml`, `template/.yamllint*.yml`,
+`template/.github/cv005.toml.jinja`, and rendered workflow changes.
+
+The shared checker is pinned upstream at
+`38905b4b2caec5b049438e6dc3f3f6b36c04d2df`, in
+`leynos/shared-actions/packages/cv005-contracts`. Its README defines the
+coverage and environment contract. Local governing references are `AGENTS.md`,
+`docs/polonius.md`, and the documentation style guide. No separate terms of
+reference or accepted design ADR exists for this import.
+
+Trace the gaps as follows: lint/preflight -> M1 -> failing fixture checks;
+bounded tests/Markdown/workflow policy -> M2 -> real public target execution;
+CI prerequisites/documentation -> M3 -> actionlint and complete local gates.
+
+## Verification plan
+
+Use executable integration tests in `tests/tooling/`, run by
+`python3 -m unittest discover -s tests/tooling -v` and a public
+`make test-tooling` target included in `make all`. Keep modules below 400
+lines. Use temporary Git repositories, child-process environments and fake
+executables; never mutate the harness process environment.
+
+1. Lint propagation: a tracked malformed YAML file, a workflow with an invalid
+   action expression, and a shell script containing a ShellCheck defect must
+   fail their real public targets. Valid fixtures, paths containing spaces, and
+   an empty shell selection must succeed. A missing tool and failed Git
+   enumeration must fail with diagnostics. These cases reject a no-op gate,
+   swallowed pipeline errors, and unsafe word splitting.
+2. Read-only preflight: fake rustup records arguments and checks
+   `RUSTUP_AUTO_INSTALL=0`. Missing toolchain/components/linkers fail; a usable
+   mold differing from the pin reports the difference without failing, as
+   upstream specifies. No check may invoke install/add or curl. Test explicit
+   installer checksum rejection with a local fake download; no host-wide tool
+   installation is needed.
+3. Test routing: a temporary minimal Cargo project with a normal integration
+   target and `compile_probe` must run each in its intended lane. Empty UI
+   discovery must be an explicit success. The Cargo fallback must retain all
+   tests. The exclusion helper must preserve source files, be idempotent, and
+   refuse a conflicting default filter instead of replacing it silently.
+4. Bounds: use nextest to parse/list the imported profiles and a disposable
+   hanging test with temporarily shortened limits to demonstrate termination.
+   Assert a non-zero result for the intended timeout and bound the outer
+   subprocess too. Configuration inspection complements actual termination; it
+   does not substitute for it.
+5. Markdown: in a temporary Git repository, an untracked document with bad
+   wrapping must fail `check-fmt`, then pass after `fmt`; ignored documents
+   stay unselected. Exercise real mdtablefix selection.
+6. Workflow policy: run the pinned checker on Youxia and on a temporary copy
+   with the PR lane leaking the CodeScene secret. The latter must fail the
+   intended contract; restoring the fixture must pass. Do not test the shared
+   package's private implementation or freeze literal action SHAs.
+
+These are finite configuration and process contracts; no unbounded proof or
+model checker is justified. Assumptions are documented tool interfaces, Bash
+and Git behaviour, executable access, and Python 3.11+ for `tomllib`. Hosted
+runners and environment settings remain outside local evidence.
+
+## Plan of work
+
+M1 imports `scripts/build-tools-common.sh`, `check-build-tools.sh`,
+`install-build-tools.sh`, and `tools/mold/{VERSION,SHA256SUMS}` from the pinned
+source. Add executable modes. Add the two yamllint files and public `lint-yaml`,
+`lint-actions`, `lint-shell`, and capability targets. Connect checks to the
+matching existing build, lint, test, formatting, typecheck and coverage
+commands. Retain current compiler flag composition. Add failing tests first,
+then implement enough to pass each boundary.
+
+M2 adds `.config/nextest.toml`, `scripts/exclude-ui-targets.sh`, and `test-ui`.
+Import the compile-target convention and exclusions for nextest and coverage
+without dropping Cargo-fallback tests. Add Git-aware mdtablefix format/check
+commands. Configure `.github/cv005.toml` for `leynos/youxia` and the existing
+lcov selection. Add `test-workflow-contracts` and include it and the UI/tooling
+lanes in `make all`. Use the exact shared checker version from the source PR.
+
+M3 updates CI to install mdtablefix and YAML lint tools before the gates that
+need them, use the shared Whitaker installer, and run the workflow and tooling
+checks. Run UI tests before coverage in both CI and the publisher, followed by
+the idempotent exclusion helper. Add the publisher environment declaration and
+any minimal workflow corrections required by the unchanged shared checker.
+Preserve action SHA shape checks and the existing coverage publisher ownership.
+Do not add unrelated delivery workflows.
+
+Update the three project guides and the index. Document effective inherited
+flags, backend/linker routes and why coverage differs; describe installer
+versus checker effects, nextest limits and Cargo fallback limitations. Resolve
+only actual failures exposed by the imported gates.
+
+## Milestones and plateaus
+
+M1 is complete when real lint targets reject seeded faults and the preflight
+reports missing capabilities without mutation. M2 is complete when ordinary, UI
+and fallback routes retain the intended tests, timeout negative controls
+terminate, Markdown drift fails, and the shared workflow checker passes. M3 is
+complete when CI ordering matches the validated local commands, documentation
+is accurate, and the full gates pass.
+
+At each boundary confirm the assigned contracts, unchanged compiler policy, no
+unapproved dependency or trust boundary, and current trace links. Revert only
+the milestone's own changes if recovery is needed. No source API compatibility
+layer is required; this is unreleased repository tooling.
+
+## Concrete steps
+
+Run from the repository root after approval. Establish red tests before editing
+the gates, then rerun focused tests through red, green, and cleanup. Capture
+command exit codes and concise diagnostics in this plan.
+
+```sh
+python3 -m unittest discover -s tests/tooling -v
+make check-build-tools check-rust-toolchain check-coverage-tools
+make lint-yaml lint-actions lint-shell
+make test-tooling test-ui test-workflow-contracts
+make fmt
+make check-fmt lint typecheck test test-ui test-workflow-contracts
+make markdownlint nixie
+make coverage
+git diff --check
+```
+
+Expected results are successful exits for valid fixtures and the real checkout,
+non-zero exits for each seeded failure, explicit no-op reporting for Youxia's
+empty UI selection, and a non-empty `lcov.info` after coverage.
+
+## Validation and acceptance
+
+All six verification obligations must have red/green evidence. Run the complete
+public gates after final edits, inspect the complete diff and all file sizes,
+then commit coherent milestones only after their checks pass. Do not claim
+hosted success from static workflow checks. Do not mark this plan complete
+until every acceptance item has evidence or an approved scope amendment.
+
+## Idempotence and recovery
+
+Checks are read-only except build outputs, coverage reports and the established
+generated spelling configuration. Run coverage exclusions only in disposable CI
+workspaces or tooling fixtures; restore the local nextest configuration after
+manual trials. Installers require explicit invocation and may update the chosen
+local prefix; never exercise their successful host installation in tests. Clean
+up temporary fixtures even after a failing assertion.
+
+## Artefacts and notes
+
+Keep transient logs outside the repository. Record source provenance and
+integration decisions in the developer guide. No new standalone architecture
+layer or ADR is required for this mechanical tooling import.
+
+## Interfaces and dependencies
+
+The public interface is Make targets and the imported shell entrypoints.
+`CHECK_BUILD_TOOLS`, `CHECK_RUST_TOOLCHAIN` and `CHECK_COVERAGE_TOOLS` remain
+overridable commands as upstream specifies. Use upstream mdtablefix 0.6.1
+provisioning and the PR's full-SHA shared action pins. Keep current Rust
+dependencies unchanged.
+
+Revision note (2026-11-14): Draft after inspection of the pinned upstream PR,
+Youxia's existing flags and workflows, and local tool availability.
+Implementation started after explicit user approval.
+
+Revision note (2026-11-14): M1 and M2 passed their integration checks. The
+first suite failed against missing baseline Make targets. The baseline lane
+tests failed because compile targets ran with ordinary tests and no UI lane
+existed. The shared checker first failed for missing repository configuration.
+All 17 current tooling tests pass, including per-test and global timeout
+termination, checksum rejection, linker failures, lane selection and a PR
+credential leak. Coverage passed after the explicit LLVM override; the
+wrong-backend mutation fails with the LLVM-only instrumentation diagnostic.
+Final review passed.
+
+Revision note (2026-11-14 23:57Z): Mark complete after `make all typecheck`,
+`make markdownlint nixie`, Ruff formatting/lint checks and `git diff --check`
+passed. The suite contains 17 tooling tests, one Rust integration test and one
+doctest. `make coverage` produced LCOV using the pinned toolchain's lld on
+PATH. The pre-existing redundant-homepage Cargo manifest warning remains; all
+commands succeed. No hosted workflows, secrets or environment settings were
+modified remotely. The existing untracked nohup.out is user-owned and remains
+untouched; generated Cargo.lock and lcov.info are excluded from this commit.
+
+Revision note (2026-11-15): The Windows-mounted checkout ignores filesystem
+mode differences. Record executable script modes explicitly in Git and verify
+them by exporting the index to a temporary Linux directory. Both build and
+toolchain preflights pass from that export. No source logic changed.
+
+Revision note (2026-11-15 review): Hosted Act validation failed because
+`make test` gained the `check-build-tools` prerequisite while that workflow's
+`setup-rust` step installed no mold linker. Provision the pinned mold there and
+add a tooling test requiring any workflow that runs the public test lane to
+install it. The tooling harness now clears `BASH_ENV`, because its startup file
+can rewrite `PATH` inside Make recipes and shadow fixture tools, and the
+coverage fixture's cold compile receives a bounded multi-minute timeout.
+Format, lint, typecheck, unit, tooling, workflow-contract, Markdown and Mermaid
+gates pass again.
+
+Revision note (2026-11-15 assessment): CodeRabbit's completeness assessment
+raised three items. The file budget was already exceeded and misrecorded; the
+corrected measurement is 27 non-plan files with 259 prose lines, recorded in
+Outcomes with the owner-instruction approval basis. `AGENTS.md` and the user
+guide now describe the `make test` / `make test-ui` split, and the documented
+nextest probe carries `RUSTUP_AUTO_INSTALL=0` so it cannot install a toolchain
+while selecting the runner. `make coverage` ran against this checkout with the
+pinned toolchain's bundled lld on `PATH` and wrote a non-empty `lcov.info` (577
+bytes); the stub test exercises no library function, so its three records
+report zero hits.
+
+Revision note (2026-11-15 formal review): The coverage recipe prepends the
+checked tools directory to `PATH` and refuses to run without nextest, because
+only nextest can exclude compile-time targets. The tooling harness drops
+`GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE` and object-directory overrides
+before initializing a fixture, and its shared helpers carry annotations. The
+mold check inspects each job that runs `make test`, with a two-job negative
+fixture. The user guide lists `cargo-nextest` and `cargo-llvm-cov` as full-gate
+prerequisites. The tooling suite now contains 21 tests.
+
+Revision note (2026-11-15 rebase): `main` advanced to `2f9b01e` while the
+branch awaited review, so the branch was rebased and its commits replayed. Two
+conflicts were resolved by keeping main's content and adding this import's own
+entries: `docs/repository-layout.md` gains the path list for the new
+configuration, scripts and tooling tests, and
+`.github/workflows/act-validation.yml` keeps main's `install-mold` and
+`install-clang-lld` inputs. That workflow already satisfied the earlier
+requirement, so this branch contributes the tooling test that enforces it
+rather than a duplicate provisioning change.
+
+Revision note (2026-11-15 post-rebase gates): The formatting gate rejected the
+documents `main` merged after this branch's original base, because `mdtablefix`
+replaces `mdformat` and enforces its own wrapping, list numbering and emphasis
+rules. One `make fmt` pass reformatted them, and that reflow is committed on
+its own. The ordinary lane test then exceeded the harness's one-minute default:
+each fixture compiles from scratch and shares the host's compiler-admission
+queue, so the bound measured queue latency rather than the lane.
+Compile-carrying lanes now receive a five-minute bound, matching the coverage
+fixture. After both repairs the measurement is 32 non-plan files, 1,325
+executable/test lines, 143 configuration lines and 991 prose lines. The
+CodeScene delta then reported the tooling harness's `make` helper for excess
+arguments, so its expected status, bound and environment now travel as a
+`CommandOptions` value object shared with `run_command`. Every gate passes on
+this tree.
+
+Revision note (2026-11-15 follow-up): CodeRabbit's reconciliation reply found
+two remaining gaps. `GIT_COMMON_DIR` now joins the Git overrides the harness
+strips, so a fixture cannot commit into the caller's object store, and the
+regression check asserts the object-directory entries alongside the index. The
+mold check now requires an installation before every test step rather than
+anywhere in the job, with a reversed-order fixture covering a late install. The
+tooling suite contains 22 tests, and the measurement is 32 non-plan files,
+1,424 executable/test lines, 143 configuration lines and 991 prose lines.
+
+Revision note (2026-11-15 second follow-up): The review of the follow-up head
+found four more gaps. `CARGO_ENCODED_RUSTFLAGS` and
+`CARGO_ENCODED_RUSTDOCFLAGS` now join the stripped build settings, because
+Cargo gives the encoded spellings precedence. Timeout cleanup asks with
+`SIGTERM` before escalating to `SIGKILL`, so nextest can stop the tests it
+started in their own process groups. The timeout fixture rejects a run-wide
+"global timeout" when it expects per-test termination. The workflow check reads
+commands inside `run: |` blocks as well as inline `run:` lines, with a
+block-scalar fixture. The tooling suite contains 23 tests, and the measurement
+is 32 non-plan files, 1,376 executable/test lines, 314 configuration lines and
+991 prose lines.
+
+Revision note (2026-11-15 nextest pin): The review of the SIGTERM fix asked for
+a pinned `cargo-nextest` release. The nextest changelog places the relevant
+floor later than the review suggested: `global-timeout`, which
+`.config/nextest.toml` sets, arrived in 0.9.100, while 0.9.87 changed Windows
+cancellation and a cancellation race. `tools/nextest/VERSION` therefore pins
+0.9.100, `scripts/check-build-tools.sh` rejects an older runner in the full and
+coverage modes, and the users' and developers' guides state the floor.
+`cargo-nextest` remains optional: an absent runner keeps the `cargo test`
+fallback. The tooling suite contains 25 tests.
+
+Revision note (2026-11-15 termination grace): Review of the nextest pin found
+that the harness waited exactly the longest configured grace period, so it
+could kill nextest at the moment nextest escalates. `GRACEFUL_STOP_SECONDS` now
+allows fifteen seconds, and a contract test parses every `grace-period` in
+`.config/nextest.toml` and requires the harness wait to exceed the longest by
+at least five seconds. An end-to-end fixture installs a `SIGTERM` handler that
+ignores the signal, which forces nextest's own escalation, and asserts that the
+fixture writes no survival marker. The fixture reports readiness before the
+harness signals it, so the test cannot pass merely because the runner had not
+started. One measured detail is recorded here because it shaped the fixture:
+nextest aborts a test binary that dies to `SIGTERM` immediately and reports any
+child that ignores the signal as a leaked handle, so the test process itself
+has to ignore the signal for the grace and `SIGKILL` path to run at all. The
+tooling suite contains 27 tests.
+
+Revision note (2026-11-15 isolation evidence): The approval review accepted the
+change but recorded two verification limits, both about evidence rather than
+behaviour. `tests/tooling/test_support.py` checked that the Git overrides were
+filtered, but not that a fixture's Git commands leave the caller's index and
+object store alone. It now builds a caller repository, aims every Git override
+at it, and shows that an unfiltered `git add` reaches the caller while the
+filtered one does not, so the test exercises the filter rather than an inert
+setup. `tests/tooling/test_workflows.py` checked only that an `install-mold`
+key appeared before each test step. Because the key is an input to the shared
+setup action, a `run:` step that merely names it installs nothing; an
+installation now counts only when the step holding the key invokes an action,
+with a `run:`-step fixture that the earlier check wrongly accepted. The tooling
+suite contains 29 tests.
+
+Revision note (2026-11-15 pre-merge checks): The approval review's automated
+round failed three pre-merge checks. The testing check named untested branches
+in the imported scripts; four new modules now cover them. `test_installer.py`
+serves a checksummed archive through a fake download, asserts that the
+versioned top-level directory is stripped under the prefix and that rustup is
+asked for the pinned toolchain and components, exercises
+`make install-cranelift` and its repair diagnostic, and fails a host without
+rustup. `test_pins.py` rejects a two-line pin, an internally spaced pin and a
+comma inside a component name, and shows that padding is trimmed and the
+component order preserved. `test_exclusion.py` covers a missing profile file, a
+missing default table and a checkout with no compile-time targets, and checks
+that the configuration is left unchanged where the script says so.
+`test_build_tools.py` gains the `--toolchain-only` and `--coverage-only` modes:
+the first inspects no linker or runner, the second accepts a toolchain without
+the Cranelift backend that the full check still requires, and an unrecognized
+mode prints the usage text. The user-facing check is met by
+`docs/v0-2-0-migration-guide.md`, written against the style guide's skeleton
+and linked from the users' guide and the contents file. The property-testing
+check stays deferred to issue #8 because Hypothesis is a new dependency, and
+the plan's dependency-approval gate applies to it. The tooling suite contains
+45 tests.
+
+Revision note (2026-11-15 follow-up round): The review's reply to that
+reconciliation accepted the new modules and named what was still thin.
+`test_pins.py` now also refuses a missing pin file and a component name holding
+a space, compares the reader's output exactly rather than through `strip()`,
+and maps every mold architecture alias while refusing an unmapped machine.
+`test_build_tools.py` records the tools each mode invokes, so
+`--toolchain-only` is shown to call no linker and `--coverage-only` to call
+clang and lld but not mold. `test_support.py` fingerprints every file under the
+caller's `.git`, which catches a loose object written inside an existing
+fan-out directory that a list of top-level names would miss.
+`test_workflows.py` now accepts an `install-mold` input only on a step that
+uses the shared `setup-rust` action, with fixtures for an unrelated action that
+accepts the key and for a look-alike action outside `leynos/shared-actions`.
+The migration guide distinguishes `make check-fmt` from `make fmt` and adds
+`tests/tooling/` to the copied files. Its statement that `make all` runs
+without cargo-nextest and needs `cargo-llvm-cov` only for `make coverage` was
+wrong; see the tooling-prerequisites revision note.
+
+The property check is now met without a new dependency.
+`tests/tooling/test_properties.py` generates bounded cases from a fixed seed
+for the pin readers, the coverage exclusion and checksum-row validation:
+generated nextest layouts must parse, gain only `default-filter`, stay
+byte-identical on a second run and be refused when they already set a filter;
+generated pins must round-trip through padding and be refused when they hold
+whitespace, several lines or a component separator; zero, duplicate or
+mismatched checksum rows must stop before extraction while one matching row
+reaches it. Hypothesis remains the recorded upgrade in issue #8 and the
+developers' guide.
+
+A controlled mutation experiment ran in disposable copies of the working tree.
+Nine guards were removed one at a time and the guarded test failed in every
+case: the pin whitespace rule, the missing-pin rule, the unsupported
+architecture rule, the component separator rule, the coverage exclusion's
+foreign-filter refusal, the duplicate-checksum refusal, the workflow action
+requirement, the child-environment `GIT_INDEX_FILE` filter, and the
+`--toolchain-only` linker skip. The tooling suite contains 63 tests.
+
+Revision note (2026-11-15 tooling prerequisites): Review found that the
+migration guide and the previous revision note overstated the fallback.
+`make test-tooling` drives `cargo nextest run` in `tests/tooling/test_lanes.py`
+and runs `make coverage` as a contract, so `make all` needs `cargo-nextest` and
+`cargo-llvm-cov`; only the Rust lanes themselves fall back to `cargo test`. The
+guide's Table 1 now marks both tools Required, section 3 states the same, and
+the developers' guide lists both among the tools to install before running the
+full workflow. The isolation test now changes the fixture's content after its
+unfiltered precondition, because the precondition had already written the blob
+that the filtered run would otherwise reuse, and the workflow checker matches
+the reviewed `leynos/shared-actions` action path rather than any action whose
+name ends in `setup-rust`, with a look-alike fixture. Fifteen guard mutations
+were then run in disposable copies: the nine recorded above plus the archive's
+strip depth, checksum verification and extraction steps, the
+`GIT_OBJECT_DIRECTORY` filter, the look-alike rejection and the exclusion's
+settled-config guard. Every mutated guard broke its selected test. The coverage
+ratchet baseline cached on `main` was deleted so the first pull request is
+measured from an empty baseline; the next run reported `Current coverage: 0.0%`
+against `Baseline coverage: 0.0%`. The tooling suite contains 64 tests.
+
+Revision note (2026-11-15 measurement): The review of the look-alike fix found
+the workflow check still reading raw step text and the outcome measurement
+stale. `tests/tooling/workflow_lane.py` now owns the scanner. It reads a step's
+own lines after dropping block-scalar bodies, so a `run: |` block that quotes
+the action path or the `install-mold` key no longer counts as an installation,
+and it reads every key of the step rather than only the lines above the input,
+so a step may list `with:` before `uses:`. Two fixtures cover both shapes, and
+moving the scanner out of `test_workflows.py` keeps the samples and assertions
+within the 400-line file limit. The developers' guide now names every tool
+`make all` needs, and the users' guide names Whitaker among the full gate's
+tools.
+
+The Outcomes measurement was re-run against the PR base (`2f9b01e`) with this
+plan excluded, using the command this section documents: 39 files, 2,780
+executable/test changed lines, 315 configuration lines and 1,185 prose lines.
+The first pass of that command reported 38 files and 2,587 executable/test
+lines because `tests/tooling/workflow_lane.py` was still untracked at the time
+and `git diff` does not count untracked files; the committed tree is what the
+counts above describe. The older 32-file, 1,376-line figure did not reproduce
+at all. Outcomes carries the measured counts, and the historical notes above
+are unchanged. Guard mutations were extended to the three new workflow checks,
+and the experiment now covers 18 guards: restoring the raw-text search fails
+the quoted-block fixture, searching only the lines above the input fails the
+reordered-keys fixture, and refusing an inline action opening fails the
+opening-key fixture. Every mutated guard broke its selected test. The tooling
+suite contains 67 tests.
+
+Revision note (2026-11-15 block and mapping shapes): The next review found two
+remaining issues. The block-header pattern required the marker alone, so
+`run: | # write a sample` opened no body and the lane it ran was invisible;
+`BLOCK_HEADER` now accepts the chomping and indentation indicators in either
+order followed by an optional comment, and the lane scan and the action scan
+share it. The check also matched `install-mold` anywhere in a step, so an
+`env:` variable of that name satisfied it; `step_key_sections` groups a step's
+own lines by the mapping key that owns them, and an installation now requires
+the key under `with:` and the action under `uses:`. The developers' guide now
+says `make check-fmt` checks Markdown through `mdtablefix --check` and only
+`make fmt` rewrites it. Three fixtures were added: a commented block header
+over the test lane, the key under `env:`, and a commented block quoting the
+action. The quoted-block fixture also nests a `with:` block, so reading block
+bodies as keys now fails it. Four guard mutations ran in disposable copies —
+block bodies read as keys, a comment-blind header, the key accepted from any
+mapping, and a step dash left in place — and each broke its selected test. All
+ten commit gates then passed sequentially on the final tree. The tooling suite
+contains 70 tests.
+
+Revision note (2026-11-15 step boundaries and measurement): The review of
+`c99cc11` found `step_boundaries` reading a dash-prefixed line inside a
+block-scalar body as a step. A heredoc holding a complete `- uses:` mapping
+therefore became a step of its own, and that slice reached `_installs_mold`
+without its `run: |` header, so the quoted installation looked real.
+`_step_items` now skips dashes inside block bodies. The new
+`SETUP_STEP_QUOTED_IN_A_HEREDOC` fixture failed before the fix, with
+`jobs_missing_mold` returning no job, and passes after it. The fixtures moved to
+`tests/tooling/workflow_fixtures.py` so the test module stays below the
+400-line limit. Re-running the measurement against base `2f9b01e` with this
+plan excluded reports 40 files, 2,981 executable/test lines, 315 configuration
+lines and 1,192 prose lines, and Outcomes carries the revised overruns.
+`git diff --check` flagged a blank line at the end of
+`tests/tooling/workflow_fixtures.py`; removing it accounts for the one
+executable line less than the first pass reported, and the earlier prose figure
+of 1,191 was one line short. Five guard mutations were run in disposable copies
+— quoted dashes read as steps, block bodies read as keys, a comment-blind
+header, the key accepted from any mapping, and a step dash left in place — and
+each broke its selected test. `make coverage` ran at this tree with the pinned
+toolchain's bundled `ld.lld` and wrote a 577-byte `lcov.info` with two `SF:`
+and four `DA:` records. All ten commit gates and `make coverage` passed. The
+tooling suite contains 71 tests.
+
+Revision note (2026-11-15 default Git environment): CodeRabbit rechecked the
+disposition of its environment-sanitization finding on `a425e64` and showed the
+earlier "fixed at `77ba78d`" reply to be wrong. `RepositoryTest` was sanitized,
+but `GitIsolationTests.git` still passed `env=None`, so its setup, commit and
+`reset --hard` children inherited whatever `GIT_DIR`, `GIT_INDEX_FILE` or
+`GIT_COMMON_DIR` the invoking process carried. The helper now sanitizes
+`self.caller_environment` when `env` is omitted, passes an explicitly supplied
+environment through unchanged, and `hostile_environment()` is built from the
+sanitized baseline rather than from `os.environ`. The new
+`test_default_git_environment_is_sanitized` test covers the default path: it
+sets a hostile caller environment, demonstrates that an explicitly unfiltered
+child does reach the caller, then asserts the caller's `.git` is untouched when
+the environment is omitted. A disposable-copy mutant that dropped the
+sanitizing call failed that test. This supersedes the executable/test figure in
+the note above: the measurement now reports 40 files, 3,020 executable/test
+lines, 315 configuration lines and 1,193 prose lines, so the executable and
+prose overruns are 1,820 and 943 lines. `ruff check --fix` and `ruff format`
+were then applied to `tests/tooling`, which corrected an unsorted import block
+and three formatting sites without changing behaviour.
+
+Revision note (2026-11-15 disabled mold input): The pre-merge assessment found
+that `MOLD_INSTALL` accepts only `install-mold: true`, yet no fixture set the
+input to `false`. A checker that accepted any value would therefore have passed
+every existing test. `MOLD_INSTALL_DISABLED` now pairs the shared setup action
+with `install-mold: 'false'`, and
+`test_disabled_mold_install_does_not_satisfy_the_lane` requires the lane to be
+reported. A disposable-copy mutant whose pattern accepted any value failed that
+test. The measurement now reports 3,046 executable/test lines, so the
+executable overrun is 1,846 lines.

@@ -13,19 +13,19 @@
 ## Summary
 
 Youxia proposes a native Rust command-line interface (CLI) and daemon that
-preserve accepted work while bulk synchronization, agent output, or slow storage
-compete for resources. Its first vertical slice supplies trustworthy read-only
-observations to Ishiban. Its second hosts one Agent Client Protocol (ACP) agent
-and synchronizes its history through native Loro, a conflict-free replicated
-data type (CRDT) engine. Fleet operation follows those two qualification gates.
+preserve accepted work while bulk synchronization, agent output, or slow
+storage compete for resources. Its first vertical slice supplies trustworthy
+read-only observations to Ishiban. Its second hosts one Agent Client Protocol
+(ACP) agent and synchronizes its history through native Loro, a conflict-free
+replicated data type (CRDT) engine. Fleet operation follows those two
+qualification gates.
 
 Sections 1–12 retain the architecture and correctness analysis from the initial
 Lody reimplementation plan. The original combined document also included a
 67-task breakdown and inline contracts. The [roadmap](../roadmap.md) replaces
 that task list; this RFC keeps the architecture in one place. The proposed
-[observation schema](../contracts/ishiban-session.schema.json),
-[storage contract](../contracts/storage.sql), and
-[configuration example](../contracts/config.example.toml) remain separate,
+[observation schema](../contracts/ishiban-session.schema.json), [storage contract](../contracts/storage.sql),
+and [configuration example](../contracts/config.example.toml) remain separate,
 reviewable artefacts.
 
 Section 13 records the later storage assessment and the requirements derived
@@ -66,11 +66,11 @@ Build a native Rust CLI and daemon in two initial vertical slices:
 2. A host for one external ACP agent, with durable input admission, incremental
    output persistence, and bidirectional native Loro synchronization.
 
-Extend that proven path to the working fleet and practical CLI parity. Use Tokio
-for asynchronous I/O, the official Rust ACP software development kit (SDK) for
-agent connections, OrthoConfig for configuration, native Rust Loro for Loro
-documents, oauth2 for the supported device authorization flow, and restson for
-bounded JSON request/response APIs.
+Extend that proven path to the working fleet and practical CLI parity. Use
+Tokio for asynchronous I/O, the official Rust ACP software development kit
+(SDK) for agent connections, OrthoConfig for configuration, native Rust Loro
+for Loro documents, oauth2 for the supported device authorization flow, and
+restson for bounded JSON request/response APIs.
 
 The main architectural requirement is **bounded work at every scheduling
 boundary**. An async function may still consume seconds of CPU, allocate an
@@ -100,21 +100,21 @@ independent native-daemon milestone.
 _Table 1: Observable completion boundaries for the first two slices._
 
 Read-only observation may authenticate, subscribe, and persist its own local
-cache. It must not create missing streams, mark messages read, publish presence,
-update model summaries, archive sessions, or answer permissions.
+cache. It must not create missing streams, mark messages read, publish
+presence, update model summaries, archive sessions, or answer permissions.
 
 ### 1.2. Native dependency qualification
 
 “Native” means native machine code operating on replicated state. It does not
-mean an Effect-native TypeScript API, a WebAssembly (WASM) module inside another
-process, or a WKWebView-based decoder. Native compilation removes Loro's
-particular WASM address-space limit; it does not remove document residency or
-CPU costs.
+mean an Effect-native TypeScript API, a WebAssembly (WASM) module inside
+another process, or a WKWebView-based decoder. Native compilation removes
+Loro's particular WASM address-space limit; it does not remove document
+residency or CPU costs.
 
 The requested dependency list needs two additional compatibility boundaries:
-**Flock** for workspace metadata and **Streams** for transport. Native Loro does
-not provide either boundary by itself. Section 2 makes this an explicit early
-gate.
+**Flock** for workspace metadata and **Streams** for transport. Native Loro
+does not provide either boundary by itself. Section 2 makes this an explicit
+early gate.
 
 ## 2. Verified baseline and compatibility boundaries
 
@@ -122,7 +122,7 @@ gate.
 
 The inspected upstream revision separates fleet ownership, workspace runtimes,
 and supervisor/execution-worker lifetimes. Retain the relevant ownership rules
-while moving expensive work into separately scheduled domains. [^2][^3]
+while moving expensive work into separately scheduled domains.[^2][^3]
 
 | Evidence in inspected source                                                                                                                                                                       | Consequence for the rewrite                                                                                                                           |
 | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -136,9 +136,9 @@ while moving expensive work into separately scheduled domains. [^2][^3]
 
 _Table 2: Inspected upstream mechanisms and their architectural consequences._
 
-These are source-backed mechanisms and implemented upstream changes. They do not
-identify the cause of every failure on the user's installed daemon. The rewrite
-must preserve the upstream corrections, then demonstrate the additional
+These are source-backed mechanisms and implemented upstream changes. They do
+not identify the cause of every failure on the user's installed daemon. The
+rewrite must preserve the upstream corrections, then demonstrate the additional
 scheduling and durability guarantees under the target workload.
 
 ### 2.2. Keep the protocols distinct
@@ -161,20 +161,20 @@ ordinary sessions to `<workspaceId>:s:<sessionId>`, and named Flock rooms to
 their existing IDs. Preserve encoding, workspace scope, gateway/shard
 configuration, token scope, and snapshot codec behaviour. The inspected code
 accepts raw historical snapshots and zstd-compressed snapshots. Do not guess
-production endpoints from placeholder defaults. [^12][^13]
+production endpoints from placeholder defaults.[^12][^13]
 
 The local protocol has its own authentication, room joins, version vectors, 32
 MiB frame ceiling, chunk reassembly, and ping watchdog. Its existing writer
 already delays export until the socket can make progress. A local join is a
 reconciliation point even if an in-memory dirty flag is clear. Preserve those
-properties if implementing that adapter. [^14]
+properties if implementing that adapter.[^14]
 
 ### 2.3. Native Flock is a blocking compatibility gate
 
 The visible workspace code uses Flock. Public npm documentation identifies a
 Rust core, but this research did not establish access to a native source/crate
 release matching Lody's pinned Flock dependency. A public description of JSON
-interchange does not specify the complete binary snapshot format. [^15]
+interchange does not specify the complete binary snapshot format.[^15]
 
 Resolve the gate in this order:
 
@@ -190,13 +190,13 @@ Resolve the gate in this order:
    left its essential metadata path.
 
 The mobile implementation is not an established native escape route: its Swift
-Flock decoder invokes a JavaScript decoder in WKWebView. [^16] Never substitute
+Flock decoder invokes a JavaScript decoder in WKWebView.[^16] Never substitute
 a Loro map merely because the application exposes both data types through
 similarly shaped metadata methods.
 
 Split the qualification: the observer needs native decoding, merge/deletion
-semantics, and recoverable replay. It can retain raw upstream records instead of
-producing a new Flock snapshot. Native authoring and upstream-readable
+semantics, and recoverable replay. It can retain raw upstream records instead
+of producing a new Flock snapshot. Native authoring and upstream-readable
 machine/session metadata are a separate gate before hosting. ACP SDK hardening
 and native Flock authoring may progress in parallel; they must not delay the
 first read-only slice once its own dependencies pass.
@@ -205,7 +205,7 @@ first read-only slice once its own dependencies pass.
 
 Lody still defaults ordinary new sessions to Loro, including metadata without a
 backend discriminator. Roost is opt-in and persists an immutable
-`historyBackend`. A remote-owned Roost history may require owner RPC. [^17]
+`historyBackend`. A remote-owned Roost history may require owner RPC.[^17]
 
 The first supported profile is an authorized, unencrypted workspace with Loro
 history. Catalogue rows for other backends remain visible with an explicit
@@ -237,20 +237,20 @@ _Table 4: Inspected dependency candidates and required qualification._
 The inspected ACP SDK exposes `Client.v1()`; do not copy obsolete Rust
 `ClientSideConnection` and mandatory `LocalSet` assumptions into the plan. Its
 handler futures are `Send`. The SDK crate version and ACP wire version are
-different numbers. [^18][^27]
+different numbers.[^18][^27]
 
-Pin the tested graph and exact patches in a lockfile. Rust 1.89 is a known lower
-bound, not a promise that every eventual transitive dependency supports it.
-Audit target-active features; a cross-platform lockfile mentioning WASM does not
-prove the native executable uses it. The production state path must contain
-neither a WASM engine nor bundled Loro/Flock WASM execution.
+Pin the tested graph and exact patches in a lockfile. Rust 1.89 is a known
+lower bound, not a promise that every eventual transitive dependency supports
+it. Audit target-active features; a cross-platform lockfile mentioning WASM
+does not prove the native executable uses it. The production state path must
+contain neither a WASM engine nor bundled Loro/Flock WASM execution.
 
 ## 3. Components and runtime isolation
 
 ### 3.1. Ownership topology
 
-Use a small number of permanent execution domains. Start with two replica worker
-processes and tune only after measurement; avoid a thread or runtime per
+Use a small number of permanent execution domains. Start with two replica
+worker processes and tune only after measurement; avoid a thread or runtime per
 document.
 
 | Domain                              | Owns                                                                                           | Must not execute inline                                                                        |
@@ -280,22 +280,22 @@ rebalancing occur only at checkpointed boundaries.
 A fixed pool still needs limits on individual operations. An arbitrary binary
 snapshot cannot become incremental simply by slicing its bytes. Measure native
 import/export cost and admit only supported bounded inputs. Quarantine an
-offending room, preserve its journal, and keep unrelated local reads and control
-work available.
+offending room, preserve its journal, and keep unrelated local reads and
+control work available.
 
 ### 3.2. Boundary contracts
 
 Every message crossing a domain carries its scope and generation:
-deployment/profile, workspace, room/session, owner generation, operation ID, and
-byte cost. Credits cover queued payloads, in-flight payloads, IPC buffers, and
-downstream ownership. Release a credit when the bounded domain actually releases
-the resource, not when a forwarding task puts it into another queue.
+deployment/profile, workspace, room/session, owner generation, operation ID,
+and byte cost. Credits cover queued payloads, in-flight payloads, IPC buffers,
+and downstream ownership. Release a credit when the bounded domain actually
+releases the resource, not when a forwarding task puts it into another queue.
 
 Use immutable byte buffers and compact projections. Do not pass a globally
 shared `Arc<Mutex<LoroDoc>>` into async code. Loro's Send/Sync traits permit
 threading; its import, export, snapshots, and callbacks remain synchronous.
 Document ownership is a scheduling decision, not a workaround for a missing
-trait. [^21]
+trait.[^21]
 
 Callbacks may mark a bounded set of dirty fields/IDs and enqueue a reference.
 They may not serialize histories, export snapshots, perform SQLite writes, or
@@ -319,7 +319,7 @@ _Table 6: Queue budgets and overload responses._
 Neither a bounded queue nor `spawn_blocking` alone establishes a bound on CPU,
 memory, or completion time. Tokio queues blocking work beyond its thread limit,
 and started blocking tasks cannot be aborted. Use admission before scheduling;
-use a process boundary when termination must work. [^28]
+use a process boundary when termination must work.[^28]
 
 ### 3.4. Workspace shape
 
@@ -338,8 +338,8 @@ Start with cohesive modules/crates rather than one crate per abstraction:
   API, service lifecycle, and internal replica-worker entry point.
 
 Ports should describe operations such as reading a catalogue, durably accepting
-a command, importing a replica batch, or publishing liveness. Callers should not
-depend on raw Loro containers or a particular HTTP client.
+a command, importing a replica batch, or publishing liveness. Callers should
+not depend on raw Loro containers or a particular HTTP client.
 
 Section 13.2 adds the shared-resource contention and progress-capacity rules.
 Section 13.6 requires domain dependency checks and atomic storage transitions.
@@ -351,19 +351,19 @@ Section 13.6 requires domain dependency checks and atomic storage transitions.
 Install the catalogue watch before enumeration, reconcile identities changed
 during enumeration, and publish catalogue readiness only after that boundary.
 This prevents the list/subscribe race. Catalogue readiness does not imply that
-every history is ready. [^9]
+every history is ready.[^9]
 
 Discover all sessions from metadata. Open supported history directories for
-active, pending, newly created, changed-turn, and explicitly inspected sessions.
-Read turn identity/scalars without materializing transcripts. Retire an
-observation lease only after fresh durable terminal evidence and activation
+active, pending, newly created, changed-turn, and explicitly inspected
+sessions. Read turn identity/scalars without materializing transcripts. Retire
+an observation lease only after fresh durable terminal evidence and activation
 pointers agree.
 
-The upstream concurrency of four bounds acquisition, not total active documents.
-Add explicit residency and byte budgets. When a budget prevents live enrichment,
-expose that fact and retain the previous observation with its timestamp. Do not
-claim all 60 active sessions are current while silently evicting their live
-evidence.
+The upstream concurrency of four bounds acquisition, not total active
+documents. Add explicit residency and byte budgets. When a budget prevents live
+enrichment, expose that fact and retain the previous observation with its
+timestamp. Do not claim all 60 active sessions are current while silently
+evicting their live evidence.
 
 Preserve these distinctions:
 
@@ -381,17 +381,17 @@ A cancel receipt, idle metadata, vanished heartbeat, or closed socket never
 proves a completed turn. An archive changes visibility; it is not deletion.
 Partial catalogue absence is not proof of removal. A fast completed turn may be
 observed without a start event. Reopened turns may produce another transition
-with the same turn IDs. [^9]
+with the same turn IDs.[^9]
 
 ### 4.2. Work-item identity and board stages
 
 Use `(profile_id, workspace_id, session_id)` as the observation identity. This
 matches the projection schema, whose primary key includes `profile_id`, so two
 deployment profiles that share workspace and session identifiers cannot
-collapse into one observed row. Keep parent,
-root/origin, repository, branch, agent-role, schedule, and PR associations with
-their provenance. Preserve the distinction between Lody's retired product Task
-and an ACP subagent task embedded in history. [^10][^11]
+collapse into one observed row. Keep parent, root/origin, repository, branch,
+agent-role, schedule, and PR associations with their provenance. Preserve the
+distinction between Lody's retired product Task and an ACP subagent task
+embedded in history.[^10][^11]
 
 Ishiban owns an explicit mapping from work items to one or more sessions.
 Recover existing mappings only from trusted surviving evidence or deliberate
@@ -487,8 +487,8 @@ observation surface. Section 13.4 defines cancellation-safe framing ownership.
 
 The published Rust Streams client already supports bootstrap, append, read/live
 SSE and long-poll, snapshots, token callbacks, and retry behaviour. Its SSE
-contract associates buffered data with the following control offset and discards
-incomplete batches on disconnect for replay. [^23]
+contract associates buffered data with the following control offset and
+discards incomplete batches on disconnect for replay.[^23]
 
 Audit its actual source and tests against the pinned Lody protocol profile.
 Qualify byte limits, multipart truncation, protected-payload extensions,
@@ -496,10 +496,10 @@ producer deduplication, cancellation, retry headers, idle watchdogs, and the
 point where internal reconnect cursors advance. A delivered event is not
 automatically durably stored.
 
-Use restson only for bounded JSON request/response operations. Do not force SSE,
-raw Loro bytes, multipart snapshots, or presence through that interface. Use the
-native Streams client's transport where it meets the contract and a narrow
-adapter or patch where it does not.
+Use restson only for bounded JSON request/response operations. Do not force
+SSE, raw Loro bytes, multipart snapshots, or presence through that interface.
+Use the native Streams client's transport where it meets the contract and a
+narrow adapter or patch where it does not.
 
 ### 5.2. Three progress positions, plus peer evidence
 
@@ -514,16 +514,16 @@ Track separately:
    specific peer observation, each explicitly named.
 
 A cursor belongs to a deployment/profile, workspace, room, stream incarnation,
-and durable replica. Network connection generation is not stream incarnation. If
-the service exposes no incarnation identifier, record that limitation and
+and durable replica. Network connection generation is not stream incarnation.
+If the service exposes no incarnation identifier, record that limitation and
 rebootstrap whenever continuity cannot be proved. Never synthesize server
 evidence from a reconnect counter.
 
 The transport reader validates framing and reserves byte capacity. The storage
 owner commits an entire cursor-bearing batch and the new durable cursor in one
-transaction. Only then may the ingestion owner acknowledge that durable boundary
-internally. Preserve out-of-order causal operations inside that batch even if
-Loro cannot apply them yet.
+transaction. Only then may the ingestion owner acknowledge that durable
+boundary internally. Preserve out-of-order causal operations inside that batch
+even if Loro cannot apply them yet.
 
 The replica worker imports durable data and produces an incrementally computed
 projection. The storage transaction commits the applied watermark, projection
@@ -534,19 +534,20 @@ operator-visible error; it does not authorize a silent skip.
 After a worker restart, reconstruct its document from the checkpoint and every
 later relevant inbox record, even if the persisted projection watermark is
 ahead. The watermark suppresses duplicate event publication; it must not
-suppress imports needed to rebuild the in-memory document. Deduplicate transport
-records across reconnect generations using the selected protocol's stable
-identity, and suppress unchanged semantic projection updates.
+suppress imports needed to rebuild the in-memory document. Deduplicate
+transport records across reconnect generations using the selected protocol's
+stable identity, and suppress unchanged semantic projection updates.
 
 ### 5.3. Checkpoints and missing dependencies
 
-A recoverable Loro checkpoint contains the ordinary snapshot, pending updates or
-retained raw journal, represented input watermark, native format version, and
-integrity metadata. Construct a consistent generation and install it atomically.
-Do not delete old recoverable state until the new generation commits.
+A recoverable Loro checkpoint contains the ordinary snapshot, pending updates
+or retained raw journal, represented input watermark, native format version,
+and integrity metadata. Construct a consistent generation and install it
+atomically. Do not delete old recoverable state until the new generation
+commits.
 
-Prevent mutations/imports between snapshot export and pending-sidecar export. An
-empty pending result clears the old sidecar in the new generation; an export
+Prevent mutations/imports between snapshot export and pending-sidecar export.
+An empty pending result clears the old sidecar in the new generation; an export
 error leaves the previous checkpoint intact. Restore the snapshot before
 importing its sidecar. Neither export call is an atomic pair by itself.
 
@@ -554,7 +555,7 @@ Loro exposes `export_pending_updates` because ordinary snapshots do not include
 all operations awaiting causal predecessors. Retaining the complete received
 journal is an alternative, provided compaction proves coverage. Neither applied
 version vectors nor a successful local flush prove that no dependencies remain
-missing. [^7][^21]
+missing.[^7][^21]
 
 Carry forward the upstream regression:
 
@@ -571,10 +572,10 @@ unsent operations; retain and reconcile the outbox and original identities.
 
 ### 5.4. Local authoring and the outbox
 
-A local command admission reserves storage and writes its frozen input, semantic
-operation identity, session/turn IDs, and required outgoing records before
-returning an accepted receipt. The per-session owner serializes authoring so
-native CRDT counters and producer sequences remain consistent.
+A local command admission reserves storage and writes its frozen input,
+semantic operation identity, session/turn IDs, and required outgoing records
+before returning an accepted receipt. The per-session owner serializes
+authoring so native CRDT counters and producer sequences remain consistent.
 
 Persist the exact outgoing bytes and producer tuple before publication. Retry
 that immutable tuple; do not regenerate “equivalent” operations after an
@@ -584,8 +585,8 @@ different problems.
 
 Keep producer state, next sequence, owner generation, and peer identity
 recoverable. Database restore can resurrect an old CRDT counter. Before
-authoring, either recover the complete previously published horizon or rotate to
-a fresh supported replica/peer identity. Changing the observation journal ID
+authoring, either recover the complete previously published horizon or rotate
+to a fresh supported replica/peer identity. Changing the observation journal ID
 alone does not solve CRDT identity reuse.
 
 An HTTP append success is **transport acceptance** unless the exact service
@@ -608,8 +609,8 @@ invented server acknowledgement.
 _Table 9: Replica recovery states and exit requirements._
 
 Every reconnect establishes a new generation and reconciles from durable state.
-Late tasks from the old generation cannot write, advance a cursor, publish stale
-presence, or dispose the new owner's document.
+Late tasks from the old generation cannot write, advance a cursor, publish
+stale presence, or dispose the new owner's document.
 
 Use protocol-supported head/version/producer operations for anti-entropy.
 Schedule bounded jittered checks and trigger them after a suspicious lack of
@@ -619,9 +620,9 @@ requires auth handling; a 429 follows retry guidance. Retry each room with
 backoff and a workspace concurrency budget so reconnecting 60 sessions does not
 create a recovery storm.
 
-Sections 13.1 and 13.3 refine storage qualification, owner-incarnation recovery,
-and retry-floor persistence. Recovery never authorizes replay of an uncertain
-external effect solely because its old claim has been reclaimed.
+Sections 13.1 and 13.3 refine storage qualification, owner-incarnation
+recovery, and retry-floor persistence. Recovery never authorizes replay of an
+uncertain external effect solely because its old claim has been reclaimed.
 
 ## 6. Heartbeats, liveness, and readiness
 
@@ -630,16 +631,16 @@ external effect solely because its old claim has been reclaimed.
 A daemon can have a functioning timer while its outbound presence is stuck. It
 can synchronize histories while its presence channel fails. It can keep
 publishing presence while a replica worker is deadlocked. Expose those
-conditions separately. [^4]
+conditions separately.[^4]
 
-Use monotonic time for schedules/deadlines and wall time only where the existing
-wire protocol requires timestamps. Detect clock discontinuities; never infer
-elapsed time from a wall-clock subtraction alone.
+Use monotonic time for schedules/deadlines and wall time only where the
+existing wire protocol requires timestamps. Detect clock discontinuities; never
+infer elapsed time from a wall-clock subtraction alone.
 
-Retain the existing 30-second heartbeat and 90-second freshness defaults for the
-compatibility profile. Use a missed-tick policy that emits one fresh renewal
-after delay rather than a burst of obsolete heartbeats. The policy does not
-recover a missed lease; it makes recovery explicit. [^29]
+Retain the existing 30-second heartbeat and 90-second freshness defaults for
+the compatibility profile. Use a missed-tick policy that emits one fresh
+renewal after delay rather than a burst of obsolete heartbeats. The policy does
+not recover a missed lease; it makes recovery explicit.[^29]
 
 ### 6.2. Publication design
 
@@ -649,14 +650,14 @@ High-frequency text, tool progress, and token callbacks may update cheap local
 state; they cannot enqueue one presence publication per update.
 
 Reserve scheduling, connection-pool, and append budget for liveness on the
-**existing ephemeral protocol**. Presence is not a made-up second server stream.
-Coalesce unsent replaceable updates before encoding; preserve in-flight ordering
-and any clock/producer rules of the selected adapter.
+**existing ephemeral protocol**. Presence is not a made-up second server
+stream. Coalesce unsent replaceable updates before encoding; preserve in-flight
+ordering and any clock/producer rules of the selected adapter.
 
 Materialize the heartbeat timestamp when starting actual publication, not when
 creating work that may queue indefinitely. Do not mutate serialized in-flight
-operations to freshen them. After an ambiguous failure, reconcile or retry under
-the protocol's identity rules, then issue a new renewal.
+operations to freshen them. After an ambiguous failure, reconcile or retry
+under the protocol's identity rules, then issue a new renewal.
 
 Bound append size and duration. A priority queue cannot interrupt a blocked
 append already in progress. The acceptance test must establish the maximum
@@ -700,8 +701,8 @@ that operational condition in the benchmark profile.
 The daemon is the ACP **client** when it launches an external agent. It
 advertises only implemented filesystem/terminal capabilities, routes permission
 requests, and consumes agent session updates. Stable protocol v1 is the first
-target. Provider-specific Lody extensions remain explicit adapters with captured
-compatibility fixtures. [^18][^30]
+target. Provider-specific Lody extensions remain explicit adapters with
+captured compatibility fixtures.[^18][^30]
 
 The first end-to-end path is:
 
@@ -721,12 +722,12 @@ The first end-to-end path is:
 The inspected SDK processes ordered callbacks within a connection dispatcher.
 Awaiting a response that requires the same dispatcher from inside a handler can
 deadlock. `cx.spawn` moves work outside that ordered callback but does not
-itself provide CPU isolation from the connection driver. [^27]
+itself provide CPU isolation from the connection driver.[^27]
 
 The inspected SDK also deliberately uses unbounded channels, and its ordinary
 line transport does not impose the daemon's required frame ceiling. A bounded
 application queue in front of those channels is insufficient if a forwarding
-task immediately empties it into the SDK. [^31]
+task immediately empties it into the SDK.[^31]
 
 The hosting spike requires:
 
@@ -744,16 +745,16 @@ The hosting spike requires:
 
 Do not advertise hard daemon memory bounds until the actual SDK queues and
 transport buffers participate in the accounting. On overload, fail the affected
-connection/session explicitly and preserve a reconstructible journal. Indefinite
-output production, finite storage, and loss-free unbounded retention cannot all
-hold simultaneously.
+connection/session explicitly and preserve a reconstructible journal.
+Indefinite output production, finite storage, and loss-free unbounded retention
+cannot all hold simultaneously.
 
 ### 7.3. Incremental output and the durability boundary
 
 Retain separate operations for text append, tool-call insertion/update,
 permission state, plan/config changes, and terminal state. Apply only the
 touched fields/items and maintain version-checked indexes. Do not repeatedly
-convert a whole conversation or a growing turn to JSON. [^6]
+convert a whole conversation or a growing turn to JSON.[^6]
 
 Coalesce adjacent text only when concatenation preserves the original order and
 meaning. Flush at bounded byte/time limits and at structural boundaries. Keep
@@ -767,10 +768,10 @@ that window through a bounded append journal, report it truthfully, and use an
 agent's verified replay/load capability when available. Do not promise recovery
 of arbitrary unacknowledged agent output.
 
-Permission and filesystem callbacks use separately admitted workers. Permissions
-carry process/session generation, request identity, a deadline, and the exact
-requested action. A stale answer cannot authorize a replacement session. No
-default automatic approval is implied by a sample SDK client.
+Permission and filesystem callbacks use separately admitted workers.
+Permissions carry process/session generation, request identity, a deadline, and
+the exact requested action. A stale answer cannot authorize a replacement
+session. No default automatic approval is implied by a sample SDK client.
 
 ### 7.4. Dispatch and cancellation semantics
 
@@ -803,32 +804,32 @@ termination, and reaping. The SDK's built-in process adapter has useful Unix
 process-group cleanup but inherits the parent environment and has its own
 drop/termination semantics. A daemon-owned Tokio process adapter is the
 preferred integration where controlled environment, cwd, cgroups, and custom
-shutdown are required. Do not give both layers competing ownership. [^32]
+shutdown are required. Do not give both layers competing ownership.[^32]
 
 Drain stderr independently with a bounded diagnostic tail. Keep protocol stdout
-exclusively JSON-RPC. Test wrappers and descendants, EOF, malformed frames, hung
-stdin, ignored cancellation, and processes surviving a parent exit. Windows Job
-Object semantics need a separate qualification before claiming parity with Unix
-process-group cleanup.
+exclusively JSON-RPC. Test wrappers and descendants, EOF, malformed frames,
+hung stdin, ignored cancellation, and processes surviving a parent exit.
+Windows Job Object semantics need a separate qualification before claiming
+parity with Unix process-group cleanup.
 
 A daemon restart cannot generically reattach to arbitrary inherited stdio. The
-initial contract drains or terminates owned processes and reconciles sessions on
-restart. Seamless handover is deferred until a supervisor and agent protocol can
-actually support it.
+initial contract drains or terminates owned processes and reconciles sessions
+on restart. Seamless handover is deferred until a supervisor and agent protocol
+can actually support it.
 
 ### 7.6. Publish host metadata and implement machine RPC
 
-Creating a native Loro document is insufficient to expose a usable Lody session.
-The hosting spike also needs compatible Flock SessionMeta creation, machine
-registration/ownership, agent configuration references, activation pointers,
-history-backend selection, and catalogue publication. Verify those writes with
-the pinned TypeScript reader and a real existing client.
+Creating a native Loro document is insufficient to expose a usable Lody
+session. The hosting spike also needs compatible Flock SessionMeta creation,
+machine registration/ownership, agent configuration references, activation
+pointers, history-backend selection, and catalogue publication. Verify those
+writes with the pinned TypeScript reader and a real existing client.
 
-Before core rollout, implement the supported machine RPC methods with the actual
-request/response envelopes and stream names. Ordinary requests use
+Before core rollout, implement the supported machine RPC methods with the
+actual request/response envelopes and stream names. Ordinary requests use
 `<workspaceId>:rpc:req:<machineId>`; response naming has current and legacy
 forms. Preserve request deadlines, target identity, authorization, correlation,
-retained results, and duplicate-delivery semantics. [^33]
+retained results, and duplicate-delivery semantics.[^33]
 
 Remote create/send, permission answers, and cancellation enter the same durable
 command owners as local CLI operations. A CRDT metadata edit is not
@@ -836,11 +837,11 @@ automatically an authorized command; decode dispatch according to the selected
 upstream contract. Persist enough request/result evidence to return the same
 receipt after a lost reply. Timeout does not authorize new execution.
 
-Request handling stays separate from bulk history synchronization. Bound pending
-RPC requests/replies and their disk retention, keep per-method capabilities
-explicit, and test control from an existing Lody client. The first hosting smoke
-may initiate locally, but a remotely unusable daemon cannot pass the practical
-replacement milestone.
+Request handling stays separate from bulk history synchronization. Bound
+pending RPC requests/replies and their disk retention, keep per-method
+capabilities explicit, and test control from an existing Lody client. The first
+hosting smoke may initiate locally, but a remotely unusable daemon cannot pass
+the practical replacement milestone.
 
 ## 8. CLI, authentication, and configuration
 
@@ -849,7 +850,7 @@ replacement milestone.
 The inspected CLI uses Better Auth device authorization with client ID
 `lody-cli`. It exchanges the resulting session token for a CLI API key via
 `/api/cli/api-key/create`, validates that key through a named Convex query, and
-separately obtains workspace-scoped Streams credentials. [^34][^35]
+separately obtains workspace-scoped Streams credentials.[^34][^35]
 
 Use oauth2's async device-flow machinery for the compatible grant. Capture
 actual endpoint paths, response shapes, polling intervals, pending/slow-down
@@ -861,14 +862,14 @@ One auth owner coordinates refresh per credential/workspace generation. A
 cancelled waiter releases its own lease without cancelling other consumers'
 refresh. Publish tokens atomically and reject late refreshes from revoked
 generations. Distinguish invalid credentials from network failures. Expired
-credentials block cloud capabilities, not healthy local cached reads. [^36]
+credentials block cloud capabilities, not healthy local cached reads.[^36]
 
 Store secrets in an OS credential facility or private credential storage with
 atomic replacement; ordinary configuration contains references. Do not forward
 daemon cloud credentials into agent environments by default. The OAuth HTTP
-adapter must disable redirects and redact token responses. OAuth2's reqwest/http
-types and restson's older Hyper/http types are not interchangeable without an
-explicit adapter. [^25]
+adapter must disable redirects and redact token responses. OAuth2's
+reqwest/http types and restson's older Hyper/http types are not interchangeable
+without an explicit adapter.[^25]
 
 Convex subscription is a separate obligation. Qualify a native subscription
 adapter; if a first experiment uses bounded polling of a documented query,
@@ -880,7 +881,7 @@ equivalence claim.
 Restson 1.5.0 is async, but it aggregates whole response bodies and performs
 JSON serialization/deserialization synchronously. Its normal timeout does not
 pre-empt the later parser, and its error path does not preserve all retry
-headers. Trace logging can include sensitive requests/bodies. [^26]
+headers. Trace logging can include sensitive requests/bodies.[^26]
 
 Use it for small typed, paginated control-plane JSON operations on the
 maintenance/REST runtime. Before live use, provide a reviewed narrow patch or
@@ -893,15 +894,15 @@ upstream extension that:
 - Separates heavy decode work from the liveness runtime.
 
 An outer Tokio timeout cannot pre-empt synchronous JSON decoding. Bound input
-size and isolate the work. Disable unused blocking/native-TLS features where the
-chosen dependency graph permits rustls.
+size and isolate the work. Disable unused blocking/native-TLS features where
+the chosen dependency graph permits rustls.
 
 ### 8.3. OrthoConfig composition and reload
 
 Use released OrthoConfig APIs for typed CLI, environment, file, and default
 composition. Load and validate configuration before starting the execution
 domains. Use injected environment sources for hermetic precedence tests. Do not
-treat illustrative proposed policy APIs as released functionality. [^37]
+treat illustrative proposed policy APIs as released functionality.[^37]
 
 The single authoritative mode is observe or host. Observer composition does not
 expose writer, presence-publisher, or agent-dispatch capabilities, even if the
@@ -928,8 +929,8 @@ Classify settings:
 _Table 11: Configuration reload and restart boundaries._
 
 The [configuration example](../contracts/config.example.toml) defines proposed
-starting budgets. It is a design contract, not a claim that OrthoConfig supplies
-those daemon policies.
+starting budgets. It is a design contract, not a claim that OrthoConfig
+supplies those daemon policies.
 
 Section 13.6 adds the source-semantics matrix, OS-native path policy, and real
 binary tests that establish production configuration wiring.
@@ -941,7 +942,7 @@ binary tests that establish production configuration wiring.
 Budget queue bytes and count, not count alone. Include retained input,
 decompressed snapshots, native replica allocation, serialization scratch, OS
 pipe/socket buffers, SDK queues, database pages, and allocator margin. The
-native Loro cache-limit API does not cap all native allocations. [^21]
+native Loro cache-limit API does not cap all native allocations.[^21]
 
 Start with small fixed worker counts. The supplied configuration proposes two
 I/O threads, two replica workers, one maintenance job, four concurrent room
@@ -958,11 +959,11 @@ The example permits 128 MiB compressed snapshots while its ordinary durable
 memory queue is 64 MiB. Stream large snapshots into quota-reserved spool files
 in bounded chunks and queue small descriptors. Do not wait for a byte permit
 larger than the queue's entire capacity. Persist or incrementally copy staged
-data before committing its checkpoint/cursor; fsync/rename and database ordering
-must preserve the same recoverability contract. Native import still needs a
-separate admitted memory budget if its API requires contiguous bytes. Temporary
-files count against disk quotas and are reclaimed after crash by reference-aware
-cleanup, never by deleting a live checkpoint's payload.
+data before committing its checkpoint/cursor; fsync/rename and database
+ordering must preserve the same recoverability contract. Native import still
+needs a separate admitted memory budget if its API requires contiguous bytes.
+Temporary files count against disk quotas and are reclaimed after crash by
+reference-aware cleanup, never by deleting a live checkpoint's payload.
 
 A 64-document soft limit is not permission to keep 64 arbitrarily large
 documents. Admit against both count and measured/estimated residency. Account
@@ -1048,8 +1049,8 @@ TypeScript/WASM oracle belongs in tests; it is not a hidden production
 dependency.
 
 Verify native reads of upstream data, upstream reads of native writes,
-merge/replay order, producer identities, and semantically equivalent results. Do
-not compare unstable binary bytes where the protocol permits different
+merge/replay order, producer identities, and semantically equivalent results.
+Do not compare unstable binary bytes where the protocol permits different
 encodings; compare documented identities, versions, and projected meaning.
 
 ### 10.2. Contract and failure tests
@@ -1164,7 +1165,7 @@ orchestration cannot move merely because fresh local prompts work.
 
 Zero-downtime daemon upgrades remain a later capability. Preserve the upstream
 supervisor's one-owner and termination-before-replacement rules, but do not
-promise arbitrary ACP stdio reattachment. [^3]
+promise arbitrary ACP stdio reattachment.[^3]
 
 ## 12. Decisions, gates, and implementation hand-off
 
@@ -1230,9 +1231,9 @@ _Table 17: Coverage of the original requirements._
 
 These proposed requirements incorporate the storage comparison and the
 [Comenq lessons][lessons]. The lessons document distinguishes verified review
-findings and merged fixes from a deployment report, an open extraction proposal,
-and inferences for Youxia. This section defines the resulting Youxia contracts;
-it does not claim that Comenq implements all of them.
+findings and merged fixes from a deployment report, an open extraction
+proposal, and inferences for Youxia. This section defines the resulting Youxia
+contracts; it does not claim that Comenq implements all of them.
 
 ### 13.1. Storage engine and schema baseline
 
@@ -1250,22 +1251,22 @@ rowid tables as generally preferable for large rows. Changing table form must
 preserve required key constraints.[^38] The adjacent storage contract adopts
 that baseline; later optimizations require representative measurements.
 
-A successful write statement does not constitute command acceptance. The storage
-owner returns acceptance only after the complete required transaction commits
-under the qualified durability policy. Verify `synchronous=FULL` and foreign-key
-enforcement for each relevant connection. Keep writes outside liveness and
-network execution, limit read-transaction lifetime, and schedule checkpoint work
-through a bounded owner. SQLite's WAL documentation explains both full
-synchronization and the commit latency that automatic checkpointing can
-introduce.[^39] Disable automatic checkpointing only after controlled checkpoint
-ownership and WAL-growth limits exist.
+A successful write statement does not constitute command acceptance. The
+storage owner returns acceptance only after the complete required transaction
+commits under the qualified durability policy. Verify `synchronous=FULL` and
+foreign-key enforcement for each relevant connection. Keep writes outside
+liveness and network execution, limit read-transaction lifetime, and schedule
+checkpoint work through a bounded owner. SQLite's WAL documentation explains
+both full synchronization and the commit latency that automatic checkpointing
+can introduce.[^39] Disable automatic checkpointing only after controlled
+checkpoint ownership and WAL-growth limits exist.
 
 Turso Database remains an optional engine qualification behind the same domain
 operations. The inspected v0.8.3 compatibility document describes experimental
 insert-only `WITHOUT ROWID` support and statement-lifetime qualifications for
 transaction completion.[^40] Those are versioned findings to recheck for the
-candidate under test. They neither establish that Turso cannot meet the contract
-nor justify assuming that replacing SQLite preserves it unchanged.
+candidate under test. They neither establish that Turso cannot meet the
+contract nor justify assuming that replacing SQLite preserves it unchanged.
 
 Qualify incoming batch/cursor commits, outbox producer allocation, projection
 and observation atomicity, checkpoint installation, output bursts, reconnect
@@ -1298,8 +1299,8 @@ retryable/stale result or schedule an explicitly admitted replacement job.
 
 Acquire count and byte admission before creating a connection task, submitting
 blocking work, or entering an SDK queue. Credits remain attached through every
-handoff until the actual owner releases the resource. Queue depth alone must not
-hide tasks waiting for admission or bytes retained in downstream buffers.
+handoff until the actual owner releases the resource. Queue depth alone must
+not hide tasks waiting for admission or bytes retained in downstream buffers.
 
 Reserve enough capacity at admission for the required completion, cancellation,
 failure, and recovery transitions of accepted work. Account for durable
@@ -1311,8 +1312,8 @@ accepted obligations within the declared scheduling policy.
 At the configured admission limit, existing work must still record its
 disposition and release resources. Physical filesystem exhaustion remains a
 separate injected fault: accounting reservations cannot stop another process
-consuming the disk. Actual `ENOSPC` blocks the affected capability without false
-acceptance or deletion of unreconciled input.
+consuming the disk. Actual `ENOSPC` blocks the affected capability without
+false acceptance or deletion of unreconciled input.
 
 ### 13.3. Incarnation recovery and retry policy
 
@@ -1339,16 +1340,16 @@ storage remain alive.
 
 Claim reclamation does not resolve an external side effect. Preserve
 `delivery_uncertain` for an ACP prompt that may have reached the agent, and
-require supported idempotency or independent reconciliation before resubmission.
-Durable local completion records cannot retroactively close the interval between
-a remote effect and its local acknowledgement.
+require supported idempotency or independent reconciliation before
+resubmission. Durable local completion records cannot retroactively close the
+interval between a remote effect and its local acknowledgement.
 
 Treat wakeup, eligibility, attempt identity, and reported state separately. A
 queue mutation, credential refresh, configuration reload, or new subscriber may
 trigger re-evaluation; it must not erase a retry floor. Persist server-directed
 or application-required retry constraints that must survive restart before
-releasing the failed attempt's ownership. Derive diagnostics and scheduling from
-the same policy state.
+releasing the failed attempt's ownership. Derive diagnostics and scheduling
+from the same policy state.
 
 Persist the policy evidence needed to reconstruct a deadline, not a monotonic
 clock's process-local `Instant`. Define restart and wall-clock discontinuity
@@ -1359,13 +1360,13 @@ and replacement so each can wake the owner without bypassing pacing.
 
 ### 13.4. Cancellation and operation identity
 
-Audit each `select!`, timeout, and cancellation boundary in ACP framing, Streams
-and SSE decoding, local JSON Lines (JSONL), and worker IPC. Record which owner
-retains partially consumed bytes and protocol state if a branch loses the race.
-Keep framing state in a persistent decoder or retain one read future across
-control/timer events when its established cancellation contract requires that.
-Do not recreate a stateful read future after discarding an already consumed
-prefix.
+Audit each `select!`, timeout, and cancellation boundary in ACP framing,
+Streams and SSE decoding, local JSON Lines (JSONL), and worker IPC. Record
+which owner retains partially consumed bytes and protocol state if a branch
+loses the race. Keep framing state in a persistent decoder or retain one read
+future across control/timer events when its established cancellation contract
+requires that. Do not recreate a stateful read future after discarding an
+already consumed prefix.
 
 Once durable acceptance transfers responsibility to an operation owner, that
 owner commits completion and observation publication independently of the
@@ -1392,9 +1393,9 @@ proceed; a package version string alone does not.
 
 Provide minimal `daemon status`/`diagnose` output in the first spike. Identify
 the running daemon's build, instance, executable/service identity where
-available, selected protocol, and relevant capabilities. The installed CLI's own
-version cannot stand in for the running process. Keep richer fleet diagnostics
-in the later CLI workstream.
+available, selected protocol, and relevant capabilities. The installed CLI's
+own version cannot stand in for the running process. Keep richer fleet
+diagnostics in the later CLI workstream.
 
 Classify unsupported or legacy rejection before a valid stream, absence of a
 valid initial reply, loss after stream establishment, and a valid domain error
@@ -1408,12 +1409,12 @@ formats. Those remain separately qualified compatibility boundaries.
 
 ### 13.6. Domain and configuration boundaries
 
-Keep command admission, delivery-state, permission, and evidence-freshness rules
-directly testable without sockets, Tokio, Loro, or a database driver. Check the
-permitted dependency graph mechanically. Adapters translate wire and storage
-representations; operation owners retain atomic guarded transitions. Extracting
-a domain rule must not split one serialized read-modify-write operation into
-independently locked calls.
+Keep command admission, delivery-state, permission, and evidence-freshness
+rules directly testable without sockets, Tokio, Loro, or a database driver.
+Check the permitted dependency graph mechanically. Adapters translate wire and
+storage representations; operation owners retain atomic guarded transitions.
+Extracting a domain rule must not split one serialized read-modify-write
+operation into independently locked calls.
 
 Use narrow ports for real external effects and existing interfaces where they
 fit. A claim or reservation has command semantics even if it returns a value.
@@ -1428,11 +1429,11 @@ OS-native paths, secrets, repository authority, and reloadability. Preserve
 meaningful I/O and parsing failures instead of converting them into missing
 values. Each chosen policy needs distinguishing inputs in its acceptance test.
 
-Inject environment and path access through a narrow OS-aware production seam. Do
-not silently lose non-Unicode paths or panic because of an unrelated non-Unicode
-environment variable. Where an external protocol requires Unicode, reject an
-unsupported value at that named boundary with a specific diagnostic. A
-convenience provider or error-conversion helper must not change the chosen
+Inject environment and path access through a narrow OS-aware production seam.
+Do not silently lose non-Unicode paths or panic because of an unrelated
+non-Unicode environment variable. Where an external protocol requires Unicode,
+reject an unsupported value at that named boundary with a specific diagnostic.
+A convenience provider or error-conversion helper must not change the chosen
 source semantics accidentally.
 
 Exercise the actual CLI and daemon composition roots with controlled subprocess
@@ -1472,8 +1473,8 @@ _Table 18: Small failure witnesses for the amended contracts._
 Keep fixture inputs, fault boundaries, expected evidence, and remaining
 limitations beside the relevant implementation task. A test that fails for an
 unrelated startup error or passes because the expected value equals a default
-does not establish its intended contract. Record unexecuted proposals as planned
-checks, never completed evidence.
+does not establish its intended contract. Record unexecuted proposals as
+planned checks, never completed evidence.
 
 ## Sources
 

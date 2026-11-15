@@ -5,41 +5,41 @@ Client Protocol (ACP) agents with native Loro synchronization; and preserve
 liveness and durable progress under load. This roadmap turns [RFC 0001][design]
 into the first observation spike, the second hosting spike, and a controlled
 fleet rollout. The implementation uses async Rust, the Rust ACP SDK,
-ortho-config, native Loro, oauth2, and restson. The source baseline remains Lody
-commit d3179e1f7538b61d0a6acc6be0a324281be4e3c0; the actual deployment profile
-is an early compatibility gate.
+ortho-config, native Loro, oauth2, and restson. The source baseline remains
+Lody commit d3179e1f7538b61d0a6acc6be0a324281be4e3c0; the actual deployment
+profile is an early compatibility gate.
 
 The structure follows the [roadmap skill][roadmap-skill] and
-[conventions][roadmap-conventions] in leynos/df12-documentation-skills at commit
-4a28c8953d3ccc2b5369b46cf042b53257d418de. GIST means Goals, Ideas, Steps, and
-Tasks: each phase carries a falsifiable idea, each step answers a delivery
-question, and each numbered checkbox defines a review-sized unit with
+[conventions][roadmap-conventions] in leynos/df12-documentation-skills at
+commit 4a28c8953d3ccc2b5369b46cf042b53257d418de. GIST means Goals, Ideas,
+Steps, and Tasks: each phase carries a falsifiable idea, each step answers a
+delivery question, and each numbered checkbox defines a review-sized unit with
 dependencies, design references, and acceptance criteria. Future ADRs belong in
 docs/adrs/ and future RFCs in docs/rfcs/. The roadmap promises no delivery
 dates; test durations and latency budgets describe acceptance only.
 
-All tasks remain unchecked pending their acceptance evidence. Unit, behavioural,
-property, and small-model checks belong with the capabilities they validate;
-explicit end-to-end tasks cover cross-component and combinatorial failure
-behaviour. Native catalogue access, durable cursor coverage, and bounded
-execution remain release gates. No production WASM or hidden TypeScript path can
-satisfy them. Dependencies control eligibility, including the conditional
-promotion rules in phase 5. The RFC preserves the original plan and records the
-Youxia amendments in §13. The [Comenq lessons][lessons] supply the
+All tasks remain unchecked pending their acceptance evidence. Unit,
+behavioural, property, and small-model checks belong with the capabilities they
+validate; explicit end-to-end tasks cover cross-component and combinatorial
+failure behaviour. Native catalogue access, durable cursor coverage, and
+bounded execution remain release gates. No production WASM or hidden TypeScript
+path can satisfy them. Dependencies control eligibility, including the
+conditional promotion rules in phase 5. The RFC preserves the original plan and
+records the Youxia amendments in §13. The [Comenq lessons][lessons] supply the
 implementation evidence behind those amendments. SQLite remains the initial
-storage baseline; optional Turso qualification in step 5.7 does not block either
-spike.
+storage baseline; optional Turso qualification in step 5.7 does not block
+either spike.
 
 ## 1. Foundational contracts and isolation boundaries
 
 Idea: if the project proves its native codecs, actual SDK queue boundaries, and
-deployed protocol profile before building features, the two spikes can reuse one
-bounded architecture without hiding a JavaScript runtime or an incompatible
+deployed protocol profile before building features, the two spikes can reuse
+one bounded architecture without hiding a JavaScript runtime or an incompatible
 cloud assumption underneath them.
 
 This phase settles the dependencies most likely to invalidate the design. It
-produces a buildable skeleton, fixtures, and executable boundary probes. It does
-not attempt CLI feature parity.
+produces a buildable skeleton, fixtures, and executable boundary probes. It
+does not attempt CLI feature parity.
 
 ### 1.1. Prove the compatibility surface before choosing adapters
 
@@ -187,9 +187,9 @@ boundary that does not actually exist. See RFC 0001 §§7, 8, and 12.
     modes, compatibility evidence, state paths, and one execution owner. Each
     gate has an owner and pass/fail evidence; queries cannot hide dispatch.
 
-Task 1.3.1 can proceed alongside observation work. Task 3.2.2 must implement and
-measure the resulting queue and credit contract before hosting; neither task
-blocks phase 2's read-only data path.
+Task 1.3.1 can proceed alongside observation work. Task 3.2.2 must implement
+and measure the resulting queue and credit contract before hosting; neither
+task blocks phase 2's read-only data path.
 
 ### 1.4. Establish a bounded, versioned local control connection
 
@@ -389,9 +389,9 @@ step defines which facts belong in the board and which remain unknown. See RFC
 
 ### 2.4. Expose a resumable feed to the existing Ishiban service
 
-Can a disconnected consumer recover one consistent board state without depending
-on a process-local JSONL sequence? The result defines the durable consumer
-contract. See RFC 0001 §§4, 5, and 9.
+Can a disconnected consumer recover one consistent board state without
+depending on a process-local JSONL sequence? The result defines the durable
+consumer contract. See RFC 0001 §§4, 5, and 9.
 
 - [ ] 2.4.1. Commit projections and replay events atomically.
 
@@ -648,9 +648,9 @@ and 7.
 
 ### 3.4. Keep heartbeat publication independent and truthful
 
-Can the host publish fresh presence while replication or REST stalls, and can it
-report degraded capabilities without claiming all work is healthy? See RFC 0001
-§§3, 6, and 9.
+Can the host publish fresh presence while replication or REST stalls, and can
+it report degraded capabilities without claiming all work is healthy? See RFC
+0001 §§3, 6, and 9.
 
 - [ ] 3.4.1. Implement the dedicated liveness runtime and publication path.
 
@@ -728,8 +728,8 @@ and replica recovery? The result defines the fleet admission gate. See RFC 0001
 
 Idea: if bounded admission and document ownership preserve the one-agent
 invariants across a representative fleet, the Rust daemon can replace a small
-production subset and then expand without relying on frequent restarts to regain
-memory or repair synchronization.
+production subset and then expand without relying on frequent restarts to
+regain memory or repair synchronization.
 
 This phase supplies the commands needed for ordinary operation and verifies the
 actual fleet workload. Capacity targets are test conditions, not a promise that
@@ -877,9 +877,9 @@ while keeping broader product parity explicit. See RFC 0001 §8.
 
 ### 4.3. Operate the daemon with bounded resource and shutdown costs
 
-Can the host maintain responsiveness while compilation or external tools consume
-the machine? This step connects internal budgets to service-level operation. See
-RFC 0001 §§3, 6, and 9.
+Can the host maintain responsiveness while compilation or external tools
+consume the machine? This step connects internal budgets to service-level
+operation. See RFC 0001 §§3, 6, and 9.
 
 - [ ] 4.3.1. Package Linux service resource and ownership controls.
   - [ ] Requires 4.1.3 and 4.2.5. See RFC 0001 §§9 and 11.
@@ -987,12 +987,12 @@ existing deployment that needs one of them must retain the old owner for that
 scope until its gate passes.
 
 Phase 5 expresses the default priority, not a requirement to finish phase 4
-before supporting the first selected workspace. If that workspace uses protected
-content, promote step 5.1 before task 2.2.4. If it uses Roost, promote task
-5.2.1 before task 2.2.4 and task 5.2.2 before enabling Roost writes. These gates
-depend on foundations and reference fixtures so their promotion does not create
-a dependency cycle. Execution integration still requires the normal phase 3
-acceptance tests.
+before supporting the first selected workspace. If that workspace uses
+protected content, promote step 5.1 before task 2.2.4. If it uses Roost,
+promote task 5.2.1 before task 2.2.4 and task 5.2.2 before enabling Roost
+writes. These gates depend on foundations and reference fixtures so their
+promotion does not create a dependency cycle. Execution integration still
+requires the normal phase 3 acceptance tests.
 
 Likewise, promote a deferred workflow capability before task 4.5.2 when the
 selected production inventory requires it. Such tasks depend on the core
@@ -1020,8 +1020,8 @@ determines whether encrypted workspaces can enter the support matrix. See RFC
 ### 5.2. Evaluate Roost history independently of Loro history
 
 Can the alternate immutable history model fit the same observation and hosting
-contracts? This determines whether its adapter merits support. See RFC 0001 §§2,
-5, and 12.
+contracts? This determines whether its adapter merits support. See RFC 0001
+§§2, 5, and 12.
 
 - [ ] 5.2.1. Implement a versioned Roost read adapter and parity corpus.
   - [ ] Requires 1.1.1, 1.2.3, and 1.3.3.
@@ -1037,9 +1037,9 @@ contracts? This determines whether its adapter merits support. See RFC 0001 §§
 
 ### 5.3. Expand desktop and native-platform interoperability
 
-Can additional clients and hosts reuse the same owners without creating a second
-data plane accidentally? This step gates desktop and native Windows daemon
-support. See RFC 0001 §§1, 2, and 11.
+Can additional clients and hosts reuse the same owners without creating a
+second data plane accidentally? This step gates desktop and native Windows
+daemon support. See RFC 0001 §§1, 2, and 11.
 
 - [ ] 5.3.1. Implement the existing local Loro data-plane protocol.
   - [ ] Requires 4.4.3. See RFC 0001 §§2, 5, 6, and 12.
@@ -1073,8 +1073,8 @@ before entering the supported command surface. See RFC 0001 §§7, 8, and 12.
 ### 5.5. Extend durable scheduling and delegation deliberately
 
 Can background triggers and agent-to-agent work preserve accepted identities
-through ambiguous delivery? This step adds behaviour beyond a directly requested
-single turn. See RFC 0001 §§5, 7, and 12.
+through ambiguous delivery? This step adds behaviour beyond a directly
+requested single turn. See RFC 0001 §§5, 7, and 12.
 
 - [ ] 5.5.1. Add durable schedule dispatch and recovery.
   - [ ] Requires 4.4.3 and 5.4.2. See RFC 0001 §§5, 7, and 12.
@@ -1090,9 +1090,9 @@ single turn. See RFC 0001 §§5, 7, and 12.
 
 ### 5.6. Add managed upgrades after ownership transfer is proven
 
-Can a release switch retain the established one-owner and backlog contract? This
-step generalizes the manual rollout without promising live stdio reattachment.
-See RFC 0001 §§9, 11, and 12.
+Can a release switch retain the established one-owner and backlog contract?
+This step generalizes the manual rollout without promising live stdio
+reattachment. See RFC 0001 §§9, 11, and 12.
 
 - [ ] 5.6.1. Add managed upgrade and further lifecycle compatibility.
   - [ ] Requires 4.5.3. Native Windows updates also require 5.3.2.
@@ -1104,9 +1104,9 @@ See RFC 0001 §§9, 11, and 12.
 ### 5.7. Qualify an alternative store against the same durability contract
 
 Does another local engine improve measured tail latency or resource use while
-preserving accepted-work recovery? SQLite remains the first-spike baseline. This
-optional work may run after hosting proves the shared workload; neither initial
-spike nor core rollout depends on it. See RFC 0001 §§5, 9, and 13.1.
+preserving accepted-work recovery? SQLite remains the first-spike baseline.
+This optional work may run after hosting proves the shared workload; neither
+initial spike nor core rollout depends on it. See RFC 0001 §§5, 9, and 13.1.
 
 - [ ] 5.7.1. Implement a bounded Turso adapter for the domain storage
   operations.

@@ -24,11 +24,13 @@ set.
   public build and test commands.
 - [Developer guide](developers-guide.md) explains the local workflow and
   implementation tooling for contributors.
+- [v0.1.0 to v0.2.0 migration guide](v0-2-0-migration-guide.md) carries a
+  previously rendered project across the checks-import release boundary.
 - [Repository layout](repository-layout.md) explains the generated project's
   top-level files, directories, and ownership boundaries.
 - [Documentation style guide](documentation-style-guide.md) defines the
-  spelling, structure, Markdown, Architecture Decision Record (ADR), Request for
-  Comments (RFC), and roadmap conventions used by this documentation set.
+  spelling, structure, Markdown, Architecture Decision Record (ADR), Request
+  for Comments (RFC), and roadmap conventions used by this documentation set.
 - [Polonius borrow-checker policy](polonius.md) records the nightly compiler
   contract, borrow-centric design rules, and audit tags used by this project.
 
@@ -48,6 +50,8 @@ set.
 
 ## Engineering practice
 
+- [Repository checks import plan](execplans/import-rust-template-repo-checks.md)
+  describes the proposed import of Rust-template validation tooling.
 - [Complexity antipatterns and refactoring strategies](complexity-antipatterns-and-refactoring-strategies.md)
   explains cognitive complexity, the bumpy-road antipattern, and refactoring
   approaches for maintainable code.

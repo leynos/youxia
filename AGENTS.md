@@ -223,9 +223,9 @@ cloned only on insertion, and error context is built lazily. See
 - Verify new borrow-sensitive code with the project toolchain and classify it
   with and without `-Zpolonius=next` as described in `docs/polonius.md`.
 
-- Run `make check-fmt`, `make lint`, and `make test` before committing. These
-  targets wrap the following commands, so contributors understand the exact
-  behaviour and policy enforced:
+- Run `make check-fmt`, `make lint`, `make test`, and `make test-ui` before
+  committing. These targets wrap the following commands, so contributors
+  understand the exact behaviour and policy enforced:
   - `make check-fmt` executes:
 
     ```sh
@@ -247,15 +247,20 @@ cloned only on insertion, and error context is built lazily. See
   - `make test` executes:
 
     ```makefile
-    TEST_CMD := $(if $(shell $(CARGO) nextest --version 2>/dev/null),nextest run,test)
+    TEST_CMD := $(if $(shell RUSTUP_AUTO_INSTALL=0 $(CARGO) nextest --version 2>/dev/null),nextest run,test)
+    test: check-build-tools
     test: export RUSTFLAGS := $(DEV_RUST_FLAGS)
-    $(CARGO) $(TEST_CMD) $(TEST_FLAGS) $(BUILD_JOBS)
+    $(CARGO) $(TEST_CMD) $(TEST_FLAGS) $(TEST_UI_EXCLUDE) $(BUILD_JOBS)
     RUSTDOCFLAGS="$(RUSTDOC_FLAGS)" $(CARGO) test --doc --workspace --all-features
     ```
 
-    running the full test suite with `cargo-nextest` when available and
-    falling back to `cargo test`, with Rust warnings denied. It then runs
-    all-feature workspace doctests separately with Rustdoc warnings denied.
+    verifying the pinned toolchain and linker, then running every ordinary
+    test with `cargo-nextest` when available and falling back to `cargo test`,
+    with Rust warnings denied. Under nextest it excludes the compile-time
+    contract targets (`tests/compile_*.rs`), which `make test-ui` runs
+    separately under the serialized UI profile; the `cargo test` fallback
+    cannot express that exclusion and runs them here. It then runs all-feature
+    workspace doctests separately with Rustdoc warnings denied.
     Use `make fmt` (`cargo fmt --workspace`) to apply formatting fixes reported
     by the formatter check.
 - Clippy warnings MUST be disallowed.
