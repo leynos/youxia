@@ -3,6 +3,11 @@
 import tomllib
 from support import RepositoryTest
 
+# Each fixture is a fresh checkout, so its crate compiles from scratch, and that
+# compile shares the host's compiler-admission queue. A one-minute bound would
+# measure queue latency rather than the lane; keep the run bounded, but wide.
+COMPILE_TIMEOUT = 300
+
 
 class LaneTests(RepositoryTest):
     """Check selected tests, cleanup boundaries and actual timeout termination."""
@@ -38,7 +43,7 @@ fn {name}() {{
         self.probe("ordinary")
         self.probe("compile_probe")
         options = ("CHECK_BUILD_TOOLS=true",)
-        self.make("test", *options)
+        self.make("test", *options, timeout=COMPILE_TIMEOUT)
         self.assertTrue(
             (self.repo / "ordinary.ran").exists(),
             "The ordinary lane must execute its integration test",
@@ -47,21 +52,21 @@ fn {name}() {{
             (self.repo / "compile_probe.ran").exists(),
             "nextest must leave compile targets for the UI lane",
         )
-        self.make("test-ui", *options)
+        self.make("test-ui", *options, timeout=COMPILE_TIMEOUT)
         self.assertEqual(
             (self.repo / "compile_probe.ran").read_text(),
             "nested-cargo",
             "UI tests must use the serialized group",
         )
         (self.repo / "compile_probe.ran").unlink()
-        self.make("test", *options, "TEST_CMD=test")
+        self.make("test", *options, "TEST_CMD=test", timeout=COMPILE_TIMEOUT)
         self.assertTrue(
             (self.repo / "compile_probe.ran").exists(),
             "Cargo fallback must not silently drop compile targets",
         )
 
     def test_empty_ui_lane_is_an_explicit_noop(self):
-        result = self.make("test-ui", "CHECK_BUILD_TOOLS=true")
+        result = self.make("test-ui", "CHECK_BUILD_TOOLS=true", timeout=COMPILE_TIMEOUT)
         self.assertIn("nothing to run", result.stdout)
 
     def test_coverage_exclusion_preserves_targets_and_refuses_conflicts(self):
@@ -72,7 +77,7 @@ fn {name}() {{
         first = config.read_bytes()
         self.run_command("bash", "scripts/exclude-ui-targets.sh")
         self.assertEqual(config.read_bytes(), first, "Exclusion must be idempotent")
-        self.run_command("cargo", "nextest", "run")
+        self.run_command("cargo", "nextest", "run", timeout=COMPILE_TIMEOUT)
         self.assertTrue(
             (self.repo / "ordinary.ran").exists(),
             "Coverage selection must retain ordinary tests",
@@ -81,7 +86,7 @@ fn {name}() {{
             (self.repo / "compile_probe.ran").exists(),
             "The shared coverage route must not execute UI tests",
         )
-        self.make("test-ui", "CHECK_BUILD_TOOLS=true")
+        self.make("test-ui", "CHECK_BUILD_TOOLS=true", timeout=COMPILE_TIMEOUT)
         self.assertTrue(
             (self.repo / "compile_probe.ran").exists(),
             "The UI profile must override coverage's default filter",
@@ -150,7 +155,7 @@ fn covered() { assert_eq!(lane_probe::answer(), 42, "Fixture answer must be 42")
         # can outlast the harness's one-minute default while compiler admission
         # queues it behind unrelated work. Keep the run bounded, but wide enough
         # that the assertion tests instrumentation rather than queue latency.
-        self.make("coverage", "CHECK_COVERAGE_TOOLS=true", timeout=300)
+        self.make("coverage", "CHECK_COVERAGE_TOOLS=true", timeout=COMPILE_TIMEOUT)
         self.assertRegex(
             (self.repo / "lcov.info").read_text(),
             r"(?m)^FNDA:[1-9]\d*,",
@@ -186,7 +191,13 @@ fn hanging() {
                     .replace('"5s"', '"100ms"')
                     .replace('"90m"', f'"{total}"')
                 )
-                result = self.run_command("cargo", "nextest", "run", expected="failure")
+                result = self.run_command(
+                    "cargo",
+                    "nextest",
+                    "run",
+                    expected="failure",
+                    timeout=COMPILE_TIMEOUT,
+                )
                 self.assertIn(
                     message,
                     result.stdout.lower(),
