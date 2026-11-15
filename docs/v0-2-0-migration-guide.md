@@ -12,15 +12,14 @@ those build files has nothing to migrate.
 
 ## Impact at a glance
 
-| Priority           | Area            | What to do                                                                                       |
-| ------------------ | --------------- | ------------------------------------------------------------------------------------------------ |
-| Required           | Gate tools      | Install `yamllint`, `actionlint`, ShellCheck, `mdtablefix` 0.6.1, `uv` and Python 3.11 or newer. |
-| Required           | Test lanes      | Run `make test-ui` for `tests/compile_*.rs`, which `make test` now leaves to that lane.          |
-| Required           | Build files     | Copy the v0.2.0 `Makefile`, `.config/nextest.toml`, `scripts/`, `tests/tooling/` and `tools/`.   |
-| Required if called | `make coverage` | Install `cargo-nextest`; coverage refuses to start without it.                                   |
-| Required if called | Coverage        | Install `cargo-llvm-cov`; `make coverage` runs it and no other target does.                      |
-| Recommended        | Test runner     | Install `cargo-nextest` 0.9.100 or newer for bounded per-test and whole-run timeouts.            |
-| Optional           | CodeScene       | Adopt the CodeScene upload workflow if the project publishes code health.                        |
+| Priority | Area           | What to do                                                                                                                               |
+| -------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Required | Gate tools     | Install `yamllint`, `actionlint`, ShellCheck, `mdtablefix` 0.6.1, `uv` and Python 3.11 or newer.                                         |
+| Required | Test lanes     | Run `make test-ui` for `tests/compile_*.rs`, which `make test` now leaves to that lane.                                                  |
+| Required | Build files    | Copy the v0.2.0 `Makefile`, `.config/nextest.toml`, `scripts/`, `tests/tooling/` and `tools/`.                                           |
+| Required | Test runner    | Install `cargo-nextest` 0.9.100 or newer; the tooling contracts drive the nextest lanes and `make coverage` refuses to start without it. |
+| Required | Coverage tools | Install `cargo-llvm-cov`; the tooling contracts run `make coverage`, so `make all` needs it.                                             |
+| Optional | CodeScene      | Adopt the CodeScene upload workflow if the project publishes code health.                                                                |
 
 _Table 1: Obligations when moving from v0.1.0 to v0.2.0._
 
@@ -77,11 +76,13 @@ row for every target the project already calls.
 
 _Table 2: Targets whose behaviour changed in v0.2.0._
 
-`make all` still runs every target without cargo-nextest. `make test` and
-`make test-ui` fall back to `cargo test`, which runs the compile-time targets
-in the ordinary lane and offers no per-test timeout; `make test-tooling` is a
-standard-library Python suite that never invokes the runner. Only
-`make coverage` refuses to run, and only `make coverage` needs `cargo-llvm-cov`.
+`make all` needs both tools installed. The Rust lanes are forgiving:
+`make test` and `make test-ui` fall back to `cargo test`, which runs the
+compile-time targets in the ordinary lane and offers no per-test timeout.
+`make test-tooling` is not: although it is a standard-library Python suite, it
+drives `cargo nextest run` and `make coverage` as contracts, so an absent
+`cargo-nextest` or `cargo-llvm-cov` fails the suite and therefore `make all`.
+`make coverage` also refuses to start on its own without the runner.
 
 ## 4. Copy the v0.2.0 build files
 

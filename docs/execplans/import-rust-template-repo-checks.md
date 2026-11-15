@@ -531,11 +531,12 @@ clang and lld but not mold. `test_support.py` fingerprints every file under the
 caller's `.git`, which catches a loose object written inside an existing
 fan-out directory that a list of top-level names would miss.
 `test_workflows.py` now accepts an `install-mold` input only on a step that
-uses the shared `setup-rust` action, with a fixture for an unrelated action
-that accepts the key. The migration guide distinguishes `make check-fmt` from
-`make fmt`, adds `tests/tooling/` to the copied files, requires
-`cargo-llvm-cov` only for `make coverage`, and states that `make all` still
-runs without cargo-nextest.
+uses the shared `setup-rust` action, with fixtures for an unrelated action that
+accepts the key and for a look-alike action outside `leynos/shared-actions`.
+The migration guide distinguishes `make check-fmt` from `make fmt` and adds
+`tests/tooling/` to the copied files. Its statement that `make all` runs
+without cargo-nextest and needs `cargo-llvm-cov` only for `make coverage` was
+wrong; see the tooling-prerequisites revision note.
 
 The property check is now met without a new dependency.
 `tests/tooling/test_properties.py` generates bounded cases from a fixed seed
@@ -555,3 +556,23 @@ architecture rule, the component separator rule, the coverage exclusion's
 foreign-filter refusal, the duplicate-checksum refusal, the workflow action
 requirement, the child-environment `GIT_INDEX_FILE` filter, and the
 `--toolchain-only` linker skip. The tooling suite contains 63 tests.
+
+Revision note (2026-11-15 tooling prerequisites): Review found that the
+migration guide and the previous revision note overstated the fallback.
+`make test-tooling` drives `cargo nextest run` in `tests/tooling/test_lanes.py`
+and runs `make coverage` as a contract, so `make all` needs `cargo-nextest` and
+`cargo-llvm-cov`; only the Rust lanes themselves fall back to `cargo test`. The
+guide's Table 1 now marks both tools Required, section 3 states the same, and
+the developers' guide lists both among the tools to install before running the
+full workflow. The isolation test now changes the fixture's content after its
+unfiltered precondition, because the precondition had already written the blob
+that the filtered run would otherwise reuse, and the workflow checker matches
+the reviewed `leynos/shared-actions` action path rather than any action whose
+name ends in `setup-rust`, with a look-alike fixture. Fifteen guard mutations
+were then run in disposable copies: the nine recorded above plus the archive's
+strip depth, checksum verification and extraction steps, the
+`GIT_OBJECT_DIRECTORY` filter, the look-alike rejection and the exclusion's
+settled-config guard. Every mutated guard broke its selected test. The coverage
+ratchet baseline cached on `main` was deleted so the first pull request is
+measured from an empty baseline; the next run reported `Current coverage: 0.0%`
+against `Baseline coverage: 0.0%`. The tooling suite contains 64 tests.

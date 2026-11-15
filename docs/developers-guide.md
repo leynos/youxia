@@ -56,8 +56,11 @@ Development builds use Cranelift for debug code generation. On Linux targets,
 quickly. Coverage generation uses `lld` because LLVM coverage tooling expects
 LLVM-compatible linker behaviour.
 
-Install `clang`, `lld`, `mold`, `python3`, and `cargo-audit` before running the
-full generated workflow locally on Linux.
+Install `clang`, `lld`, `mold`, `python3`, `cargo-nextest`, `cargo-llvm-cov`,
+and `cargo-audit` before running the full generated workflow locally on Linux.
+The tooling contracts drive the nextest lanes and `make coverage`, so the
+runner and the coverage tool are needed for `make test-tooling`, and therefore
+for `make all`.
 
 ### Repository check boundaries
 
