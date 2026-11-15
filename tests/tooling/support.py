@@ -30,6 +30,11 @@ class RepositoryTest(unittest.TestCase):
                 "CARGO_BUILD_TARGET_DIR",
                 "MAKEFLAGS",
                 "NEXTEST_PROFILE",
+                # Make runs recipes through bash, and a startup file named by
+                # BASH_ENV can rewrite PATH inside the child. That would shadow
+                # fixtures which stand in for host tools, so the child starts
+                # without one.
+                "BASH_ENV",
             }
         }
         self.env["RUSTUP_TOOLCHAIN"] = "nightly-2026-11-12"

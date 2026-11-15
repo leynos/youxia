@@ -129,7 +129,11 @@ fn covered() { assert_eq!(lane_probe::answer(), 42, "Fixture answer must be 42")
         host = self.run_command("rustc", "-vV").stdout.split("host: ")[1].split()[0]
         linker_dir = f"{sysroot}/lib/rustlib/{host}/bin/gcc-ld"
         self.env["PATH"] = linker_dir + ":" + self.env["PATH"]
-        self.make("coverage", "CHECK_COVERAGE_TOOLS=true")
+        # Instrumenting the fixture compiles it from scratch, so a cold build
+        # can outlast the harness's one-minute default while compiler admission
+        # queues it behind unrelated work. Keep the run bounded, but wide enough
+        # that the assertion tests instrumentation rather than queue latency.
+        self.make("coverage", "CHECK_COVERAGE_TOOLS=true", timeout=300)
         self.assertRegex(
             (self.repo / "lcov.info").read_text(),
             r"(?m)^FNDA:[1-9]\d*,",

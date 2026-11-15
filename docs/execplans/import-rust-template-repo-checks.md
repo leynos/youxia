@@ -344,3 +344,13 @@ Revision note (2026-11-15): The Windows-mounted checkout ignores filesystem
 mode differences. Record executable script modes explicitly in Git and verify
 them by exporting the index to a temporary Linux directory. Both build and
 toolchain preflights pass from that export. No source logic changed.
+
+Revision note (2026-11-15 review): Hosted Act validation failed because
+`make test` gained the `check-build-tools` prerequisite while that workflow's
+`setup-rust` step installed no mold linker. Provision the pinned mold there and
+add a tooling test requiring any workflow that runs the public test lane to
+install it. The tooling harness now clears `BASH_ENV`, because its startup file
+can rewrite `PATH` inside Make recipes and shadow fixture tools, and the
+coverage fixture's cold compile receives a bounded multi-minute timeout.
+Format, lint, typecheck, unit, tooling, workflow-contract, Markdown and Mermaid
+gates pass again.
