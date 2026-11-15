@@ -24,6 +24,8 @@ set.
   public build and test commands.
 - [Developer guide](developers-guide.md) explains the local workflow and
   implementation tooling for contributors.
+- [v0.1.0 to v0.2.0 migration guide](v0-2-0-migration-guide.md) carries a
+  previously rendered project across the checks-import release boundary.
 - [Repository layout](repository-layout.md) explains the generated project's
   top-level files, directories, and ownership boundaries.
 - [Documentation style guide](documentation-style-guide.md) defines the

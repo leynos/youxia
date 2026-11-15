@@ -85,6 +85,11 @@ doctest therefore fails the command.
 
 ## Makefile Targets
 
+A project rendered before v0.2.0 should follow the
+[v0.1.0 to v0.2.0 migration guide](v0-2-0-migration-guide.md) before running
+the gates below; it lists the new tool requirements and the test lane that
+`make test` no longer runs.
+
 The generated `Makefile` exposes these public targets:
 
 - `make all` runs formatting, linting, ordinary and compile-time tests,
