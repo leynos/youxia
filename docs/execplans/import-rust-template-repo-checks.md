@@ -153,32 +153,44 @@ Nextest 0.9.116 accepts both imported profiles; no runner upgrade was needed.
   clang/lld. This branch therefore contributes only the workflow test and the
   harness changes from its linker commit, and that commit's message says so.
   Re-measure Outcomes against the new base.
+- 2026-11-15: The next review found the workflow check reading raw step text and
+  the outcome measurement stale. Decide whether a step installs mold from its
+  YAML keys with block-scalar bodies dropped, and accept either key order,
+  rather than from a text window before the input. Move the scanner into
+  `tests/tooling/workflow_lane.py` so the growing fixture set keeps the test
+  module within the 400-line limit, and re-measure Outcomes against the PR base
+  instead of carrying the earlier figure forward.
 
 ## Outcomes & retrospective
 
 Local implementation, negative controls and final review are complete. Hosted
 execution and environment protection are outside scope. The completed change
-affects 32 non-plan files: 1,376 executable/test changed lines, 314
-configuration lines and 991 prose lines, counting additions and deletions
+affects 38 non-plan files: 2,587 executable/test changed lines, 315
+configuration lines and 1,184 prose lines, counting additions and deletions
 independently of this plan and classifying `tests/` and `scripts/` as
 executable/test, other non-Markdown build and workflow files as configuration,
 and Markdown as prose. The 24-file, 1,200-executable-line and 250-prose-line
-budgets are exceeded by eight files, 176 lines and 741 lines; configuration
-stays within its budget. The import's own lint-formatting repairs account for
-one extra file. The remaining growth is the mechanical `mdtablefix` reflow of
-the five documents `main` merged after this branch left its original base (RFC
-0001, the roadmap, the daemon-design lessons, its execplan and the contracts
-README) together with the two shared documents the formatter also rewrapped; no
-prose was added or removed. The 2026-11-15 review instructions to fix the
-underlying failures provisioned the Act validation linkers, which `main` now
-supplies, corrected the test-lane guidance, and required the coverage guard,
-per-job workflow check, fixture environment filtering and helper type
-annotations that the first full review identified. Reverting a required
+budgets are exceeded by 14 files, 1,387 lines and 934 lines; configuration
+stays within its 450-line budget. Earlier revisions of this section reported 32
+files and 1,376 executable/test lines; re-running the measurement command above
+against the base it names does not reproduce that figure, and the 2026-11-15
+measurement revision note records the counts above. The growth is the imported
+tooling suite, the review repairs recorded in the revision notes, and the
+mechanical `mdtablefix` reflow of the five documents `main` merged after this
+branch left its original base (RFC 0001, the roadmap, the daemon-design
+lessons, its execplan and the contracts README) together with the two shared
+documents the formatter also rewrapped; those rewrites moved lines without
+changing words. The 2026-11-15 review instructions to fix the underlying
+failures provisioned the Act validation linkers, which `main` now supplies,
+corrected the test-lane guidance, and required the coverage guard, per-job
+workflow check, fixture environment filtering, helper type annotations and
+workflow-check repairs that the reviews identified. Reverting a required
 formatting repair, leaving hosted CI red, keeping inaccurate guidance, or
 leaving those defects unfixed would each defeat the import, so the owner's
-instruction is recorded as the approval the tolerance requires. No Rust API,
-toolchain pin, development backend or shared contract was changed. All imported
-shell scripts and the estate YAML policy match their upstream source bytes.
+instruction is recorded as the approval the tolerance requires, and it covers
+the re-measured overruns. No Rust API, toolchain pin, development backend or
+shared contract was changed. All imported shell scripts and the estate YAML
+policy match their upstream source bytes.
 
 ## Context and orientation
 
@@ -576,3 +588,27 @@ settled-config guard. Every mutated guard broke its selected test. The coverage
 ratchet baseline cached on `main` was deleted so the first pull request is
 measured from an empty baseline; the next run reported `Current coverage: 0.0%`
 against `Baseline coverage: 0.0%`. The tooling suite contains 64 tests.
+
+Revision note (2026-11-15 measurement): The review of the look-alike fix found
+the workflow check still reading raw step text and the outcome measurement
+stale. `tests/tooling/workflow_lane.py` now owns the scanner. It reads a step's
+own lines after dropping block-scalar bodies, so a `run: |` block that quotes
+the action path or the `install-mold` key no longer counts as an installation,
+and it reads every key of the step rather than only the lines above the input,
+so a step may list `with:` before `uses:`. Two fixtures cover both shapes, and
+moving the scanner out of `test_workflows.py` keeps the samples and assertions
+within the 400-line file limit. The developers' guide now names every tool
+`make all` needs, and the users' guide names Whitaker among the full gate's
+tools.
+
+The Outcomes measurement was re-run against the PR base (`2f9b01e`) with this
+plan excluded, using the command this section documents: 38 files, 2,587
+executable/test lines, 315 configuration lines and 1,184 prose lines. The
+recorded 32-file, 1,376-line figure did not reproduce from that command, so
+Outcomes carries the measured counts; the historical notes above are unchanged.
+Guard mutations were extended to the three new workflow checks, and the
+experiment now covers 18 guards: restoring the raw-text search fails the
+quoted-block fixture, searching only the lines above the input fails the
+reordered-keys fixture, and refusing an inline action opening fails the
+opening-key fixture. Every mutated guard broke its selected test. The tooling
+suite contains 67 tests.

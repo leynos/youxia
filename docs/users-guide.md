@@ -140,7 +140,7 @@ install tools. Explicit `make install-build-tools` installs pinned mold and
 Rust components; `make install-cranelift` installs only that backend.
 
 The full gate also needs yamllint, actionlint, ShellCheck, mdtablefix 0.6.1,
-`uv`, Python 3.11 or newer, `cargo-nextest` 0.9.100 or newer, and
+`whitaker`, `uv`, Python 3.11 or newer, `cargo-nextest` 0.9.100 or newer, and
 `cargo-llvm-cov`. The nextest floor comes from `global-timeout`, which that
 release added; `make check-build-tools` rejects an older runner because the
 profile would not load. `make all` runs the tooling contract tests, which

@@ -56,11 +56,18 @@ Development builds use Cranelift for debug code generation. On Linux targets,
 quickly. Coverage generation uses `lld` because LLVM coverage tooling expects
 LLVM-compatible linker behaviour.
 
-Install `clang`, `lld`, `mold`, `python3`, `cargo-nextest`, `cargo-llvm-cov`,
-and `cargo-audit` before running the full generated workflow locally on Linux.
-The tooling contracts drive the nextest lanes and `make coverage`, so the
-runner and the coverage tool are needed for `make test-tooling`, and therefore
-for `make all`.
+`make all` runs every gate, so it needs the whole tool set installed before the
+full generated workflow can run locally on Linux: `clang`, `lld`, `mold`,
+`python3` 3.11 or newer, `uv`, `yamllint`, `actionlint`, ShellCheck,
+`mdtablefix` 0.6.1, `whitaker`, `cargo-nextest` and `cargo-llvm-cov`.
+`make lint` drives the YAML, workflow and shell linters as well as Whitaker,
+`make check-fmt` formats the Git-selected Markdown through `mdtablefix`, and
+`make test-workflow-contracts` and `make spelling` fetch their pinned tools with
+`uv`. The tooling contracts drive the nextest lanes and `make coverage`, so
+the runner and the coverage tool are needed for `make test-tooling`, and
+therefore for `make all`. `make audit` additionally needs `cargo-audit`, and
+the optional `make markdownlint` and `make nixie` targets need
+`markdownlint-cli2` and `nixie`; none of those three belongs to `make all`.
 
 ### Repository check boundaries
 
@@ -69,7 +76,10 @@ The tooling import follows agent-template-rust PR #168 at commit
 to Make's build-tool boundary and its integration tests; use those entrypoints
 rather than duplicate pin parsing or installation logic. `make test-tooling`
 exercises public targets in temporary repositories with child-only
-environments, including real Cargo routing and timeout failures.
+environments, including real Cargo routing and timeout failures. The workflow
+scanner sits in `tests/tooling/workflow_lane.py`, which reads workflow text
+without a YAML dependency; `tests/tooling/test_workflows.py` holds the fixtures
+and assertions that exercise it.
 
 The suite is standard-library `unittest`. Example tests carry one case per
 contract; `tests/tooling/test_properties.py` adds bounded generated cases from
