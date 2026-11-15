@@ -165,32 +165,32 @@ Nextest 0.9.116 accepts both imported profiles; no runner upgrade was needed.
 
 Local implementation, negative controls and final review are complete. Hosted
 execution and environment protection are outside scope. The completed change
-affects 38 non-plan files: 2,587 executable/test changed lines, 315
-configuration lines and 1,184 prose lines, counting additions and deletions
+affects 39 non-plan files: 2,780 executable/test changed lines, 315
+configuration lines and 1,185 prose lines, counting additions and deletions
 independently of this plan and classifying `tests/` and `scripts/` as
 executable/test, other non-Markdown build and workflow files as configuration,
 and Markdown as prose. The 24-file, 1,200-executable-line and 250-prose-line
-budgets are exceeded by 14 files, 1,387 lines and 934 lines; configuration
+budgets are exceeded by 15 files, 1,580 lines and 935 lines; configuration
 stays within its 450-line budget. Earlier revisions of this section reported 32
 files and 1,376 executable/test lines; re-running the measurement command above
 against the base it names does not reproduce that figure, and the 2026-11-15
-measurement revision note records the counts above. The growth is the imported
-tooling suite, the review repairs recorded in the revision notes, and the
-mechanical `mdtablefix` reflow of the five documents `main` merged after this
-branch left its original base (RFC 0001, the roadmap, the daemon-design
-lessons, its execplan and the contracts README) together with the two shared
-documents the formatter also rewrapped; those rewrites moved lines without
-changing words. The 2026-11-15 review instructions to fix the underlying
-failures provisioned the Act validation linkers, which `main` now supplies,
-corrected the test-lane guidance, and required the coverage guard, per-job
-workflow check, fixture environment filtering, helper type annotations and
-workflow-check repairs that the reviews identified. Reverting a required
-formatting repair, leaving hosted CI red, keeping inaccurate guidance, or
-leaving those defects unfixed would each defeat the import, so the owner's
-instruction is recorded as the approval the tolerance requires, and it covers
-the re-measured overruns. No Rust API, toolchain pin, development backend or
-shared contract was changed. All imported shell scripts and the estate YAML
-policy match their upstream source bytes.
+measurement revision note records the counts above and why its first pass was
+still short. The growth is the imported tooling suite, the review repairs
+recorded in the revision notes, and the mechanical `mdtablefix` reflow of the
+five documents `main` merged after this branch left its original base (RFC
+0001, the roadmap, the daemon-design lessons, its execplan and the contracts
+README) together with the two shared documents the formatter also rewrapped;
+those rewrites moved lines without changing words. The 2026-11-15 review
+instructions to fix the underlying failures provisioned the Act validation
+linkers, which `main` now supplies, corrected the test-lane guidance, and
+required the coverage guard, per-job workflow check, fixture environment
+filtering, helper type annotations and workflow-check repairs that the reviews
+identified. Reverting a required formatting repair, leaving hosted CI red,
+keeping inaccurate guidance, or leaving those defects unfixed would each defeat
+the import, so the owner's instruction is recorded as the approval the
+tolerance requires, and it covers the re-measured overruns. No Rust API,
+toolchain pin, development backend or shared contract was changed. All imported
+shell scripts and the estate YAML policy match their upstream source bytes.
 
 ## Context and orientation
 
@@ -602,13 +602,16 @@ within the 400-line file limit. The developers' guide now names every tool
 tools.
 
 The Outcomes measurement was re-run against the PR base (`2f9b01e`) with this
-plan excluded, using the command this section documents: 38 files, 2,587
-executable/test lines, 315 configuration lines and 1,184 prose lines. The
-recorded 32-file, 1,376-line figure did not reproduce from that command, so
-Outcomes carries the measured counts; the historical notes above are unchanged.
-Guard mutations were extended to the three new workflow checks, and the
-experiment now covers 18 guards: restoring the raw-text search fails the
-quoted-block fixture, searching only the lines above the input fails the
+plan excluded, using the command this section documents: 39 files, 2,780
+executable/test changed lines, 315 configuration lines and 1,185 prose lines.
+The first pass of that command reported 38 files and 2,587 executable/test
+lines because `tests/tooling/workflow_lane.py` was still untracked at the time
+and `git diff` does not count untracked files; the committed tree is what the
+counts above describe. The older 32-file, 1,376-line figure did not reproduce
+at all. Outcomes carries the measured counts, and the historical notes above
+are unchanged. Guard mutations were extended to the three new workflow checks,
+and the experiment now covers 18 guards: restoring the raw-text search fails
+the quoted-block fixture, searching only the lines above the input fails the
 reordered-keys fixture, and refusing an inline action opening fails the
 opening-key fixture. Every mutated guard broke its selected test. The tooling
 suite contains 67 tests.

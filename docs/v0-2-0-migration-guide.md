@@ -121,7 +121,8 @@ running through the ordinary lane.
       and Python 3.11 or newer.
 - [ ] Copy the v0.2.0 `Makefile`, `.config/nextest.toml`, `scripts/`,
       `tests/tooling/` and `tools/`.
-- [ ] Install `cargo-nextest` 0.9.100 or newer.
+- [ ] Install `cargo-nextest` 0.9.100 or newer and `cargo-llvm-cov`, which the
+      tooling contracts and `make coverage` need.
 - [ ] Add `make test-ui` to local and hosted validation.
 - [ ] Run `make check-build-tools` and resolve what it reports.
 - [ ] Run `make all` and fix every diagnostic rather than suppressing it.
