@@ -55,8 +55,9 @@ compact and omits build output such as `target/`.
 
 - `.github/dependabot.yml`: Configures automated dependency update checks.
 
-- `.github/workflows/act-validation.yml`: Runs the generated workflow validation
-  through `act` separately from main CI.
+- `.github/workflows/act-validation.yml`: Installs `act` and runs
+  `make test WITH_ACT=1` separately from main CI. No repository target
+  consumes `WITH_ACT` yet, so this job currently repeats the main test suite.
 
 - `.github/workflows/ci.yml`: Runs the generated project's continuous
   integration checks.

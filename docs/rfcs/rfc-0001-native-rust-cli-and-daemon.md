@@ -385,7 +385,10 @@ with the same turn IDs. [^9]
 
 ### 4.2. Work-item identity and board stages
 
-Use `(workspace_id, session_id)` as the observation identity. Keep parent,
+Use `(profile_id, workspace_id, session_id)` as the observation identity. This
+matches the projection schema, whose primary key includes `profile_id`, so two
+deployment profiles that share workspace and session identifiers cannot
+collapse into one observed row. Keep parent,
 root/origin, repository, branch, agent-role, schedule, and PR associations with
 their provenance. Preserve the distinction between Lody's retired product Task
 and an ACP subagent task embedded in history. [^10][^11]

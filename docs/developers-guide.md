@@ -22,8 +22,10 @@ manually. `make coverage` uses `cargo llvm-cov` with `lld`.
 
 GitHub Actions Act validation lives in `.github/workflows/act-validation.yml`.
 The main `.github/workflows/ci.yml` workflow deliberately does not run
-`make test WITH_ACT=1`; the separate Act workflow runs those slower
-container-backed checks in parallel.
+`make test WITH_ACT=1`; the separate Act workflow installs `act` and runs that
+target in parallel. No Make target consumes `WITH_ACT` yet, so the Act job
+currently repeats the main test suite rather than running container-backed
+checks.
 
 A scheduled `.github/workflows/mutation-testing.yml` workflow also runs
 `cargo-mutants` via the shared reusable workflow, daily and on manual
