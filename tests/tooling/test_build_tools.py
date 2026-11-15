@@ -22,10 +22,16 @@ class BuildToolsTests(RepositoryTest):
         )
         self.rustup()
 
-    def rustup(self, *, toolchain: bool = True, component: bool = True) -> None:
+    def rustup(
+        self,
+        *,
+        toolchain: bool = True,
+        component: bool = True,
+        installed: str | None = None,
+    ) -> None:
         """Fake only the queries accepted by a read-only preflight."""
         channel = "nightly-2026-11-12" if toolchain else "stable"
-        components = (
+        components = installed or (
             "clippy\nllvm-tools\nrustc-codegen-cranelift\nrustfmt"
             if component
             else "rustfmt"
@@ -144,6 +150,62 @@ esac
                 )
                 self.assertIn(message, result.stdout)
                 self.write("bin/" + tool, original, executable=True)
+
+    def test_toolchain_only_skips_the_linker_and_runner_checks(self) -> None:
+        """A toolchain-only check must not demand the linker or nextest."""
+        full = self.make("check-build-tools").stdout
+        self.assertIn(
+            "mold",
+            full,
+            "The full check must report the linker it inspects",
+        )
+        only = self.make("check-rust-toolchain").stdout
+        for absent in ("mold", "clang", "lld", "cargo-nextest"):
+            self.assertNotIn(
+                absent,
+                only,
+                f"A toolchain-only check must not inspect {absent}",
+            )
+
+    def test_coverage_only_does_not_require_the_cranelift_component(self) -> None:
+        """Coverage builds with LLVM, so the backend is not a coverage tool."""
+        self.rustup(installed="clippy\nllvm-tools\nrustfmt")
+        coverage = self.make("check-coverage-tools")
+        self.assertNotIn(
+            "rustc-codegen-cranelift",
+            coverage.stdout,
+            "A coverage check must not require the Cranelift backend",
+        )
+        full = self.make(
+            "check-rust-toolchain",
+            command=CommandOptions(expected="failure"),
+        )
+        self.assertIn(
+            "component rustc-codegen-cranelift-preview is not installed",
+            full.stdout,
+            "The full check must still require every pinned component",
+        )
+
+    def test_unknown_mode_and_extra_arguments_are_usage_errors(self) -> None:
+        """The checker accepts exactly one optional mode."""
+        for arguments in (("--bogus",), ("--toolchain-only", "--coverage-only")):
+            with self.subTest(arguments=arguments):
+                result = self.run_command(
+                    "bash",
+                    "scripts/check-build-tools.sh",
+                    *arguments,
+                    options=CommandOptions(expected="failure"),
+                )
+                self.assertIn(
+                    "usage:",
+                    result.stdout,
+                    "An unrecognised invocation must print the usage text",
+                )
+                self.assertIn(
+                    "--coverage-only",
+                    result.stdout,
+                    "The usage text must list the accepted modes",
+                )
 
     def test_installer_rejects_bad_checksum_before_unpacking(self) -> None:
         self.write(
