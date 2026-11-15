@@ -12,7 +12,10 @@ TEST_COMMAND = re.compile(r"^make test(?:\s|$)")
 BLOCK_MARKERS = frozenset({"|", ">", "|-", ">-", "|+", ">+"})
 MOLD_INSTALL = re.compile(r"(?m)^\s+install-mold:\s*['\"]?true['\"]?$")
 STEP_ITEM = re.compile(r"(?m)^(?P<indent>[ ]*)-[ ](?P<opening>.*)$")
-USES_KEY = re.compile(r"(?m)^[ ]*uses:[ ]*\S")
+# `install-mold` is an input to the shared Rust setup action. An unrelated
+# action receiving the key ignores it, so only that action may claim the
+# installation.
+MOLD_INSTALLING_ACTION = re.compile(r"uses:[ ]*\S*setup-rust(?:@|\s|$)")
 
 # Mold is installed in `lint` only. A check that searches the whole workflow
 # would accept the `test` job's `make test` step, which cannot link.
@@ -67,6 +70,25 @@ jobs:
       - run: |
           echo preparing
           make test
+"""
+
+# `install-mold` is an input to the shared setup action. An action without that
+# input ignores the key, so a check that accepts any action step would pass a
+# job that never installs the linker.
+MOLD_KEY_ON_AN_UNRELATED_ACTION = """\
+name: Fixture
+
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache
+          install-mold: 'true'
+      - run: make test
 """
 
 # `install-mold` is an input to the shared setup action. Naming the key inside
@@ -179,24 +201,25 @@ def _step_before(block: str, offset: int) -> tuple[int, str] | None:
     return last.start(), last.group("opening")
 
 
-def _is_action_step(block: str, start: int, opening: str, offset: int) -> bool:
-    """Say whether the step at `start` invokes an action before `offset`."""
-    return opening.startswith("uses:") or bool(USES_KEY.search(block, start, offset))
+def _installs_mold(block: str, start: int, offset: int) -> bool:
+    """Say whether the step opening at `start` hands the key to the installer.
+
+    A `run:` step that merely names the key provisions nothing, and neither
+    does an action that has no such input. The installation counts only when
+    the step holding the key invokes the shared Rust setup action.
+    """
+    return bool(MOLD_INSTALLING_ACTION.search(block, start, offset))
 
 
 def mold_installation_offsets(block: str) -> list[int]:
-    """Locate steps that install mold as an input to an action.
-
-    A `run:` step that merely names the key provisions nothing, so an
-    installation counts only when the step holding the key invokes an action.
-    """
+    """Locate steps that install mold through the shared setup action."""
     offsets: list[int] = []
     for match in MOLD_INSTALL.finditer(block):
         step = _step_before(block, match.start())
         if step is None:
             continue
-        start, opening = step
-        if _is_action_step(block, start, opening, match.start()):
+        start, _ = step
+        if _installs_mold(block, start, match.start()):
             offsets.append(start)
     return offsets
 
@@ -306,6 +329,19 @@ class WorkflowTests(RepositoryTest):
             jobs_missing_mold(MOLD_KEY_IN_A_RUN_STEP),
             ["test"],
             "A key outside an action step must not satisfy the lane",
+        )
+
+    def test_mold_install_must_target_the_setup_action(self) -> None:
+        """An unrelated action cannot install mold by accepting the key."""
+        self.assertEqual(
+            [name for name, _ in test_lane_jobs(MOLD_KEY_ON_AN_UNRELATED_ACTION)],
+            ["test"],
+            "The fixture still owns a test lane",
+        )
+        self.assertEqual(
+            jobs_missing_mold(MOLD_KEY_ON_AN_UNRELATED_ACTION),
+            ["test"],
+            "Only the shared setup action can satisfy the installation",
         )
 
     def test_shared_checker_rejects_a_pr_secret_leak(self) -> None:
