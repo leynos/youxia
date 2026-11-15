@@ -101,6 +101,23 @@ fn {name}() {{
             "A conflicting filter must be preserved for diagnosis",
         )
 
+    def test_coverage_requires_nextest_to_exclude_compile_targets(self):
+        result = self.make(
+            "coverage",
+            "CHECK_COVERAGE_TOOLS=true",
+            "TEST_CMD=test",
+            expected="failure",
+        )
+        self.assertIn(
+            "coverage requires cargo-nextest",
+            result.stdout,
+            "Coverage must refuse a fallback that would instrument UI targets",
+        )
+        self.assertFalse(
+            (self.repo / "lcov.info").exists(),
+            "Refused coverage must not write a report",
+        )
+
     def test_coverage_overrides_the_development_cranelift_profile(self):
         self.write(
             ".cargo/config.toml",

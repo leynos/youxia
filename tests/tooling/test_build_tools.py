@@ -8,7 +8,7 @@ from support import RepositoryTest
 class BuildToolsTests(RepositoryTest):
     """Keep the checker read-only and the installer fail-closed."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Provide recording tool executables in the child process PATH."""
         super().setUp()
         self.env["BUILD_TOOLS_PREFIX"] = str(self.repo)
@@ -22,7 +22,7 @@ class BuildToolsTests(RepositoryTest):
         )
         self.rustup()
 
-    def rustup(self, *, toolchain=True, component=True):
+    def rustup(self, *, toolchain: bool = True, component: bool = True) -> None:
         """Fake only the queries accepted by a read-only preflight."""
         channel = "nightly-2026-11-12" if toolchain else "stable"
         components = (
@@ -44,7 +44,7 @@ esac
             executable=True,
         )
 
-    def test_checker_accepts_available_tools_and_only_warns_on_mold_pin(self):
+    def test_checker_accepts_available_tools_and_only_warns_on_mold_pin(self) -> None:
         result = self.make("check-build-tools")
         self.assertIn("does not match the pin", result.stdout)
         self.assertFalse(
@@ -53,7 +53,7 @@ esac
         )
         self.assertIn("component list", (self.repo / "queries").read_text())
 
-    def test_missing_toolchain_and_components_are_failures(self):
+    def test_missing_toolchain_and_components_are_failures(self) -> None:
         for has_toolchain, has_components, message in (
             (False, True, "is not installed"),
             (True, False, "component clippy is not installed"),
@@ -67,7 +67,7 @@ esac
                     "Missing capabilities must never trigger installs",
                 )
 
-    def test_unusable_linkers_fail(self):
+    def test_unusable_linkers_fail(self) -> None:
         for tool, target, message in (
             ("mold", "check-build-tools", "cannot report its version"),
             ("clang", "check-build-tools", "cannot report its version"),
@@ -81,7 +81,7 @@ esac
                 self.assertIn(message, result.stdout)
                 path.write_text(original)
 
-    def test_missing_linkers_do_not_fall_back_to_host_tools(self):
+    def test_missing_linkers_do_not_fall_back_to_host_tools(self) -> None:
         for command in ("bash", "make", "dirname", "grep", "awk", "cat"):
             (self.repo / "bin" / command).symlink_to(shutil.which(command))
         isolated = {"PATH": str(self.repo / "bin")}
@@ -98,7 +98,7 @@ esac
                 self.assertIn(message, result.stdout)
                 self.write("bin/" + tool, original, executable=True)
 
-    def test_installer_rejects_bad_checksum_before_unpacking(self):
+    def test_installer_rejects_bad_checksum_before_unpacking(self) -> None:
         self.write(
             "bin/uname",
             """#!/bin/sh

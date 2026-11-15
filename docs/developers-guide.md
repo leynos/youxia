@@ -94,11 +94,13 @@ toolchain pin is unchanged.
 of termination grace and the run to 90 minutes. The `ui` profile serializes
 nested Cargo tests, allowing 1,200 seconds plus ten seconds of grace per test.
 `tests/compile_*.rs` targets run under `make test-ui`; ordinary nextest and
-coverage exclude them. The Cargo fallback runs them with ordinary tests and
-does not provide nextest's bounds or group serialization. CI runs UI tests
-before the shared coverage action, then uses `exclude-ui-targets.sh` to narrow
-the default profile. That helper preserves source files and refuses an existing
-conflicting filter; run it only in disposable workspaces.
+coverage exclude them. `make coverage` requires cargo-nextest for that reason
+and stops with an actionable message without it. The `make test` Cargo fallback
+runs them with ordinary tests and does not provide nextest's bounds or group
+serialization. CI runs UI tests before the shared coverage action, then uses
+`exclude-ui-targets.sh` to narrow the default profile. That helper preserves
+source files and refuses an existing conflicting filter; run it only in
+disposable workspaces.
 
 `make test-workflow-contracts` invokes the shared CV-005 rules at the
 Makefile's pinned revision, configured for this repository in

@@ -134,24 +134,34 @@ Nextest 0.9.116 accepts both imported profiles; no runner upgrade was needed.
 - 2026-11-15: Review feedback requires the public `make test` lane to succeed
   and the guidance to be accurate. Provision mold in Act validation, correct the
   `make test` / `make test-ui` split in `AGENTS.md` and the migration steps,
-  and record the resulting three-file and nine-prose-line budget overruns. The
-  owner's instruction to fix the underlying issues and merge is the approval
-  the tolerance requires. The previous "24 non-plan files" outcome measurement
-  was wrong and is corrected here.
+  and record the resulting budget overruns. The owner's instruction to fix the
+  underlying issues and merge is the approval the tolerance requires. The
+  previous "24 non-plan files" outcome measurement was wrong and is corrected
+  here.
+- 2026-11-15: The first full review found that coverage could drop the checked
+  linker path and silently instrument compile-time targets, that the fixture
+  environment could carry the caller's Git index, that the mold check searched
+  the whole workflow rather than the job running `make test`, and that the
+  shared test helpers lacked annotations. Fix all four with regression
+  fixtures. The resulting executable-line overrun is recorded in Outcomes under
+  the same owner-instruction approval.
 
 ## Outcomes & retrospective
 
 Local implementation, negative controls and final review are complete. Hosted
 execution and environment protection are outside scope. The completed change
-affects 27 non-plan files: 1,145 executable/test changed lines, 149
-configuration lines and 259 prose lines, counting additions and deletions
-independently of this plan. The 24-file and 250-prose-line budgets are exceeded
-by three files and nine lines. The import's own lint-formatting repairs already
-account for one extra file. The 2026-11-15 review instruction to fix the
+affects 28 non-plan files: 1,314 executable/test changed lines, 149
+configuration lines and 264 prose lines, counting additions and deletions
+independently of this plan. The 24-file, 1,200-executable-line and
+250-prose-line budgets are exceeded by four files, 114 lines and 14 lines;
+configuration stays within its budget. The import's own lint-formatting repairs
+account for one extra file. The 2026-11-15 review instructions to fix the
 underlying failures added `.github/workflows/act-validation.yml`, so that
-hosted Act validation can link with mold, and corrected the test-lane guidance
-in `AGENTS.md` and the user guide. Reverting a required formatting repair,
-leaving hosted CI red, or keeping inaccurate guidance would each defeat the
+hosted Act validation can link with mold, corrected the test-lane guidance, and
+required the coverage guard, per-job workflow check, fixture environment
+filtering and helper type annotations that the first full review identified.
+Reverting a required formatting repair, leaving hosted CI red, keeping
+inaccurate guidance, or leaving those defects unfixed would each defeat the
 import, so the owner's instruction is recorded as the approval the tolerance
 requires. No Rust API, toolchain pin, development backend or shared contract
 was changed. All imported shell scripts and the estate YAML policy match their
@@ -380,3 +390,12 @@ while selecting the runner. `make coverage` ran against this checkout with the
 pinned toolchain's bundled lld on `PATH` and wrote a non-empty `lcov.info` (577
 bytes); the stub test exercises no library function, so its three records
 report zero hits.
+
+Revision note (2026-11-15 formal review): The coverage recipe prepends the
+checked tools directory to `PATH` and refuses to run without nextest, because
+only nextest can exclude compile-time targets. The tooling harness drops
+`GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE` and object-directory overrides
+before initializing a fixture, and its shared helpers carry annotations. The
+mold check inspects each job that runs `make test`, with a two-job negative
+fixture. The user guide lists `cargo-nextest` and `cargo-llvm-cov` as full-gate
+prerequisites. The tooling suite now contains 21 tests.

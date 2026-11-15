@@ -137,8 +137,15 @@ target/%/$(TARGET): check-build-tools ## Build binary in debug or release mode
 	PATH="$(BUILD_TOOLS_PATH)" RUSTFLAGS="$(DEV_RUST_FLAGS)" $(CARGO) build $(BUILD_JOBS) $(if $(findstring release,$(@)),--release) --bin $(TARGET)
 
 coverage: check-coverage-tools ## Generate lcov coverage with lld for llvm-tools compatibility
+	@if [ -z "$(strip $(COVERAGE_NEXTEST))" ]; then \
+	  echo "coverage requires cargo-nextest: only nextest can exclude the" >&2; \
+	  echo "compile-time targets from the instrumented run." >&2; \
+	  echo "Install it with: cargo binstall cargo-nextest" >&2; \
+	  exit 1; \
+	fi
 	@echo "coverage linker flags: $(COVERAGE_LINKER_FLAGS)"
-	CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm \
+	PATH="$(BUILD_TOOLS_PATH)" \
+		CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm \
 		CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=clang \
 		RUSTFLAGS="$(COVERAGE_RUST_FLAGS)" \
 		CFLAGS="$(COVERAGE_LINKER_FLAGS)" \

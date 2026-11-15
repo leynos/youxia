@@ -6,37 +6,56 @@ import signal
 import subprocess
 import tempfile
 import unittest
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Literal
 
 ROOT = Path(__file__).resolve().parents[2]
+
+# Host settings that would redirect a fixture. Build flags and target
+# directories move its output, Makefile options change its target graph, and
+# the Git entries are repository-local overrides that Git applies whatever the
+# working directory is.
+EXCLUDED_ENVIRONMENT = frozenset(
+    {
+        "RUSTFLAGS",
+        "RUSTDOCFLAGS",
+        "CARGO_TARGET_DIR",
+        "CARGO_BUILD_TARGET_DIR",
+        "MAKEFLAGS",
+        "NEXTEST_PROFILE",
+        "BASH_ENV",
+        "GIT_DIR",
+        "GIT_WORK_TREE",
+        "GIT_INDEX_FILE",
+        "GIT_OBJECT_DIRECTORY",
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    }
+)
+
+
+def child_environment(source: Mapping[str, str]) -> dict[str, str]:
+    """Copy an environment without settings that would redirect a fixture.
+
+    `BASH_ENV` matters because Make runs recipes through bash: a startup file
+    named there can rewrite `PATH` inside the child and shadow fixture tools.
+    The `GIT_*` entries matter because a caller's `GIT_INDEX_FILE`, for
+    example, would make the fixture's `git add` write to the caller's index.
+    """
+    return {
+        key: value for key, value in source.items() if key not in EXCLUDED_ENVIRONMENT
+    }
 
 
 class RepositoryTest(unittest.TestCase):
     """Own a repository and child environment that are restored after a test."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Create the smallest repository that can exercise the public gates."""
         directory = tempfile.TemporaryDirectory(prefix="youxia-tooling-")
         self.addCleanup(directory.cleanup)
         self.repo = Path(directory.name)
-        self.env = {
-            key: value
-            for key, value in os.environ.items()
-            if key
-            not in {
-                "RUSTFLAGS",
-                "RUSTDOCFLAGS",
-                "CARGO_TARGET_DIR",
-                "CARGO_BUILD_TARGET_DIR",
-                "MAKEFLAGS",
-                "NEXTEST_PROFILE",
-                # Make runs recipes through bash, and a startup file named by
-                # BASH_ENV can rewrite PATH inside the child. That would shadow
-                # fixtures which stand in for host tools, so the child starts
-                # without one.
-                "BASH_ENV",
-            }
-        }
+        self.env = child_environment(os.environ)
         self.env["RUSTUP_TOOLCHAIN"] = "nightly-2026-11-12"
         for name in (
             "Makefile",
@@ -55,7 +74,7 @@ class RepositoryTest(unittest.TestCase):
                 shutil.copy2(source, target)
         self.run_command("git", "init", "-q")
 
-    def write(self, name, text, *, executable=False):
+    def write(self, name: str, text: str, *, executable: bool = False) -> Path:
         """Write one fixture; executable fixtures can stand in for host tools."""
         path = self.repo / name
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -64,7 +83,13 @@ class RepositoryTest(unittest.TestCase):
             path.chmod(0o755)
         return path
 
-    def run_command(self, *arguments, expected=0, env=None, timeout=60):
+    def run_command(
+        self,
+        *arguments: str,
+        expected: int | Literal["failure"] = 0,
+        env: Mapping[str, str] | None = None,
+        timeout: float = 60,
+    ) -> subprocess.CompletedProcess[str]:
         """Run a bounded child; report its complete output on failure."""
         with subprocess.Popen(
             arguments,
@@ -95,12 +120,25 @@ class RepositoryTest(unittest.TestCase):
             self.assertEqual(result.returncode, expected, result.stdout)
         return result
 
-    def make(self, target, *options, **kwargs):
+    def make(
+        self,
+        target: str,
+        *options: str,
+        expected: int | Literal["failure"] = 0,
+        timeout: float = 60,
+        env: Mapping[str, str] | None = None,
+    ) -> subprocess.CompletedProcess[str]:
         """Exercise the copied public Makefile without installing prerequisites."""
         return self.run_command(
-            "make", "--no-print-directory", target, *options, **kwargs
+            "make",
+            "--no-print-directory",
+            target,
+            *options,
+            expected=expected,
+            timeout=timeout,
+            env=env,
         )
 
-    def track(self, *paths):
+    def track(self, *paths: str) -> None:
         """Stage fixtures because lint selection deliberately follows Git."""
         self.run_command("git", "add", "--", *paths)

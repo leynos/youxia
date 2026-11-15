@@ -5,24 +5,78 @@ import shutil
 
 from support import ROOT, RepositoryTest
 
+JOB_HEADING = re.compile(r"(?m)^  (?P<name>[A-Za-z0-9_-]+):\s*$")
+TEST_LANE_STEP = re.compile(r"(?m)^\s*(?:-\s*)?run:.*\bmake test(?:\s|$)")
+MOLD_INSTALL = re.compile(r"(?m)^\s+install-mold:\s*['\"]?true['\"]?$")
+
+# Mold is installed in `lint` only. A check that searches the whole workflow
+# would accept the `test` job's `make test` step, which cannot link.
+UNRELATED_MOLD_INSTALL = """\
+name: Fixture
+
+on: push
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: leynos/shared-actions/.github/actions/setup-rust@0000000000000000000000000000000000000000
+        with:
+          install-mold: 'true'
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: make test
+"""
+
+
+def test_lane_jobs(workflow_text: str) -> list[tuple[str, str]]:
+    """Name the jobs that run `make test`, with each job's own block.
+
+    A text splitter is sufficient here: a workflow indents job identifiers
+    under `jobs:` by exactly two spaces and job content by four or more, so a
+    two-space mapping key that starts a line begins a job.
+    """
+    headings = [
+        (match.start(), match.group("name"))
+        for match in JOB_HEADING.finditer(workflow_text)
+    ]
+    jobs = []
+    for index, (start, name) in enumerate(headings):
+        end = (
+            headings[index + 1][0] if index + 1 < len(headings) else len(workflow_text)
+        )
+        block = workflow_text[start:end]
+        if TEST_LANE_STEP.search(block):
+            jobs.append((name, block))
+    return jobs
+
+
+def jobs_missing_mold(workflow_text: str) -> list[str]:
+    """Name test-lane jobs that do not install mold in the same job."""
+    return [
+        name
+        for name, block in test_lane_jobs(workflow_text)
+        if not MOLD_INSTALL.search(block)
+    ]
+
 
 class WorkflowTests(RepositoryTest):
     """Verify the public checker invocation without copying its private rules."""
 
-    def test_workflows_running_the_test_lane_install_the_dev_linker(self):
+    def test_workflows_running_the_test_lane_install_the_dev_linker(self) -> None:
         """Provision mold wherever a workflow exercises the public test lane.
 
         `make test` links development binaries with mold, and its
         `check-build-tools` prerequisite stops the lane when the linker is
-        absent. A workflow that runs the lane therefore has to install it,
-        otherwise the hosted job reports a missing host capability instead of a
-        test regression.
+        absent. A workflow that runs the lane therefore has to install it in
+        the same job, otherwise the hosted job reports a missing host
+        capability instead of a test regression.
         """
-        lane_pattern = re.compile(r"(?m)^\s*(?:-\s*)?run:.*\bmake test(?:\s|$)")
         lane_workflows = {
             path.name: path.read_text()
             for path in sorted((ROOT / ".github/workflows").glob("*.yml"))
-            if lane_pattern.search(path.read_text())
+            if TEST_LANE_STEP.search(path.read_text())
         }
         self.assertTrue(
             lane_workflows,
@@ -30,13 +84,30 @@ class WorkflowTests(RepositoryTest):
         )
         for name, text in lane_workflows.items():
             with self.subTest(workflow=name):
-                self.assertRegex(
-                    text,
-                    r"(?m)^\s+install-mold:\s*['\"]?true['\"]?$",
-                    f"{name} runs `make test`, which needs the mold linker",
+                self.assertTrue(
+                    test_lane_jobs(text),
+                    f"{name} matched the test-lane pattern but no job owns it",
+                )
+                self.assertEqual(
+                    jobs_missing_mold(text),
+                    [],
+                    f"{name}: these jobs run `make test` without installing mold",
                 )
 
-    def test_shared_checker_rejects_a_pr_secret_leak(self):
+    def test_mold_check_requires_installation_in_the_test_job(self) -> None:
+        """An unrelated job's mold install must not satisfy a test-lane job."""
+        self.assertEqual(
+            [name for name, _ in test_lane_jobs(UNRELATED_MOLD_INSTALL)],
+            ["test"],
+            "Only the job that runs `make test` counts as a test lane",
+        )
+        self.assertEqual(
+            jobs_missing_mold(UNRELATED_MOLD_INSTALL),
+            ["test"],
+            "Installation in another job must not satisfy the check",
+        )
+
+    def test_shared_checker_rejects_a_pr_secret_leak(self) -> None:
         shutil.copytree(ROOT / ".github", self.repo / ".github")
         self.make("test-workflow-contracts", timeout=120)
         path = self.repo / ".github/workflows/ci.yml"
