@@ -2,6 +2,7 @@
 
 import subprocess
 import time
+from pathlib import Path
 
 import tomllib
 from support import GRACEFUL_STOP_SECONDS, ROOT, CommandOptions, RepositoryTest
@@ -34,6 +35,54 @@ def configured_grace_periods(config: dict) -> list[float]:
     for settings in config["profile"].values():
         periods += _grace_periods(settings)
     return periods
+
+
+# The fixture installs a `SIGTERM` handler and ignores the signal, so only
+# nextest's own escalation can stop it. It reports readiness before waiting, so
+# the harness never signals a test that has not yet started.
+STUBBORN_TEST = """//! Outlast the runner's termination signal to force its escalation.
+unsafe extern "C" {
+    fn signal(signal: i32, handler: extern "C" fn(i32)) -> usize;
+}
+
+extern "C" fn ignore(_: i32) {}
+
+#[test]
+fn stubborn() {
+    // SAFETY: `signal` accepts a handler with the C calling convention, and
+    // `SIGTERM` is 15 on every platform this fixture runs on.
+    unsafe {
+        signal(15, ignore);
+    }
+    std::fs::write("ready.marker", "ready").expect("record readiness");
+    for _ in 0..1200 {
+        if std::path::Path::new("go.marker").exists() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    std::thread::sleep(std::time::Duration::from_secs(4));
+    std::fs::write("survived.marker", "survived").expect("record survival");
+}
+"""
+
+# A short grace keeps the fixture quick. What matters is that nextest escalates
+# while the harness is still waiting for it to exit.
+SHORT_GRACE_PROFILE = """[profile.default]
+slow-timeout = { period = "60s", terminate-after = 1, grace-period = "1s" }
+"""
+
+
+def wait_for(marker: Path, process: subprocess.Popen[str]) -> bool:
+    """Poll until the fixture reports readiness, gives up, or the bound passes."""
+    deadline = time.monotonic() + COMPILE_TIMEOUT
+    while time.monotonic() < deadline:
+        if marker.exists():
+            return True
+        if process.poll() is not None:
+            return False
+        time.sleep(0.05)
+    return marker.exists()
 
 
 class LaneTests(RepositoryTest):
@@ -236,36 +285,9 @@ fn covered() { assert_eq!(lane_probe::answer(), 42, "Fixture answer must be 42")
         )
 
     def test_termination_reaches_a_test_that_ignores_sigterm(self) -> None:
-        """A child that ignores `SIGTERM` must not outlive the fixture."""
-        self.probe(
-            "stubborn",
-            """//! Outlast the runner's termination signal to force its escalation.
-unsafe extern "C" {
-    fn signal(signal: i32, handler: extern "C" fn(i32)) -> usize;
-}
-
-extern "C" fn ignore(_: i32) {}
-
-#[test]
-fn stubborn() {
-    // SAFETY: `signal` accepts a handler with the C calling convention, and
-    // `SIGTERM` is 15 on every platform this fixture runs on.
-    unsafe {
-        signal(15, ignore);
-    }
-    std::thread::sleep(std::time::Duration::from_secs(4));
-    std::fs::write("survived.marker", "survived").expect("record survival");
-}
-""",
-        )
-        # A short grace keeps the fixture quick. What matters is that nextest
-        # escalates while the harness is still waiting for it to exit.
-        self.write(
-            ".config/nextest.toml",
-            """[profile.default]
-slow-timeout = { period = "60s", terminate-after = 1, grace-period = "1s" }
-""",
-        )
+        """A test that ignores `SIGTERM` must not outlive the fixture."""
+        self.probe("stubborn", STUBBORN_TEST)
+        self.write(".config/nextest.toml", SHORT_GRACE_PROFILE)
         self.run_command(
             "cargo",
             "nextest",
@@ -273,15 +295,39 @@ slow-timeout = { period = "60s", terminate-after = 1, grace-period = "1s" }
             "--no-run",
             options=CommandOptions(timeout=COMPILE_TIMEOUT),
         )
-        started = time.monotonic()
-        with self.assertRaises(subprocess.TimeoutExpired):
-            self.run_command(
-                "cargo", "nextest", "run", options=CommandOptions(timeout=2)
+        process = self.start_lane()
+        ready = self.repo / "ready.marker"
+        try:
+            self.assertTrue(
+                wait_for(ready, process),
+                "The fixture must install its handler before any shutdown",
             )
+            # Release the test into its sleep, then let the harness stop it.
+            self.write("go.marker", "")
+            RepositoryTest._stop(process)
+        finally:
+            if process.poll() is None:
+                RepositoryTest._stop(process)
+        self.assert_not_survived()
+
+    def start_lane(self) -> subprocess.Popen[str]:
+        """Run the lane in its own session so the harness can signal it."""
+        return subprocess.Popen(
+            ("cargo", "nextest", "run"),
+            cwd=self.repo,
+            env=self.env,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+
+    def assert_not_survived(self) -> None:
+        """Reject a survival marker from a test the harness failed to stop."""
         marker = self.repo / "survived.marker"
-        # The test would write its marker four seconds after it started; give
-        # it a little more than that before concluding it was stopped.
-        while time.monotonic() - started < 6 and not marker.exists():
+        released = time.monotonic()
+        # The fixture writes its marker four seconds after release; allow more.
+        while time.monotonic() - released < 6 and not marker.exists():
             time.sleep(0.1)
         self.assertFalse(
             marker.exists(),
