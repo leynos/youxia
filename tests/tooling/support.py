@@ -56,6 +56,13 @@ class CommandOptions:
 
 DEFAULT_OPTIONS = CommandOptions()
 
+# A cancelled nextest run sends `SIGTERM` to each test's process group, waits
+# its profile's `grace-period`, then escalates. The `ui` profile allows ten
+# seconds, so the harness must wait longer than that before killing the runner
+# itself; otherwise a test that ignores `SIGTERM` outlives the checkout. The
+# extra five seconds cover signal delivery and the runner's own cleanup.
+GRACEFUL_STOP_SECONDS = 15
+
 
 def child_environment(source: Mapping[str, str]) -> dict[str, str]:
     """Copy an environment without settings that would redirect a fixture.
@@ -157,10 +164,14 @@ class RepositoryTest(unittest.TestCase):
 
         Nextest runs each test in its own process group, so a direct `SIGKILL`
         can outrun the runner's own cleanup and leave orphaned tests behind.
-        Ask with `SIGTERM` first, give the runner a bounded grace period, then
-        escalate, and always reap the child so its exit status is collected.
+        Ask with `SIGTERM` first, give the runner
+        `GRACEFUL_STOP_SECONDS` to stop its tests, then escalate, and always
+        reap the child so its exit status is collected.
         """
-        for signal_number, grace in ((signal.SIGTERM, 10), (signal.SIGKILL, None)):
+        for signal_number, grace in (
+            (signal.SIGTERM, GRACEFUL_STOP_SECONDS),
+            (signal.SIGKILL, None),
+        ):
             with contextlib.suppress(ProcessLookupError):
                 os.killpg(process.pid, signal_number)
             try:

@@ -1,12 +1,39 @@
 """Run real Cargo fixtures through ordinary, compile-time and timeout lanes."""
 
+import subprocess
+import time
+
 import tomllib
-from support import CommandOptions, RepositoryTest
+from support import GRACEFUL_STOP_SECONDS, ROOT, CommandOptions, RepositoryTest
 
 # Each fixture is a fresh checkout, so its crate compiles from scratch, and that
 # compile shares the host's compiler-admission queue. A one-minute bound would
 # measure queue latency rather than the lane; keep the run bounded, but wide.
 COMPILE_TIMEOUT = 300
+
+
+def _seconds(duration: str) -> float:
+    """Convert a nextest duration such as `5s` or `2m` into seconds."""
+    unit = duration[-1]
+    scale = {"s": 1, "m": 60, "h": 3600}[unit]
+    return float(duration[:-1]) * scale
+
+
+def _grace_periods(settings: dict) -> list[float]:
+    """Collect a profile's grace periods, including its overrides."""
+    timeout = settings.get("slow-timeout")
+    periods = [_seconds(timeout["grace-period"])] if isinstance(timeout, dict) else []
+    for override in settings.get("overrides", []):
+        periods += _grace_periods(override)
+    return periods
+
+
+def configured_grace_periods(config: dict) -> list[float]:
+    """List every termination grace nextest may apply to a fixture run."""
+    periods: list[float] = []
+    for settings in config["profile"].values():
+        periods += _grace_periods(settings)
+    return periods
 
 
 class LaneTests(RepositoryTest):
@@ -183,6 +210,82 @@ fn covered() { assert_eq!(lane_probe::answer(), 42, "Fixture answer must be 42")
             (self.repo / "lcov.info").read_text(),
             r"(?m)^FNDA:[1-9]\d*,",
             "The public coverage route must produce instrumented data",
+        )
+
+    def test_harness_outlasts_every_configured_nextest_grace_period(self) -> None:
+        """The harness must not kill nextest while it is still stopping tests.
+
+        A wait equal to the longest grace period is a race: the harness would
+        escalate at the same moment nextest does, so a test that ignores
+        `SIGTERM` could outlive the checkout it was running in.
+        """
+        config = tomllib.loads((ROOT / ".config/nextest.toml").read_text())
+        periods = configured_grace_periods(config)
+        self.assertTrue(
+            periods, "The nextest profiles must configure a termination grace"
+        )
+        self.assertGreater(
+            GRACEFUL_STOP_SECONDS,
+            max(periods),
+            "The harness must wait longer than nextest's longest grace period",
+        )
+        self.assertGreaterEqual(
+            GRACEFUL_STOP_SECONDS - max(periods),
+            5,
+            "Leave margin for signal delivery and the runner's own cleanup",
+        )
+
+    def test_termination_reaches_a_test_that_ignores_sigterm(self) -> None:
+        """A child that ignores `SIGTERM` must not outlive the fixture."""
+        self.probe(
+            "stubborn",
+            """//! Outlast the runner's termination signal to force its escalation.
+unsafe extern "C" {
+    fn signal(signal: i32, handler: extern "C" fn(i32)) -> usize;
+}
+
+extern "C" fn ignore(_: i32) {}
+
+#[test]
+fn stubborn() {
+    // SAFETY: `signal` accepts a handler with the C calling convention, and
+    // `SIGTERM` is 15 on every platform this fixture runs on.
+    unsafe {
+        signal(15, ignore);
+    }
+    std::thread::sleep(std::time::Duration::from_secs(4));
+    std::fs::write("survived.marker", "survived").expect("record survival");
+}
+""",
+        )
+        # A short grace keeps the fixture quick. What matters is that nextest
+        # escalates while the harness is still waiting for it to exit.
+        self.write(
+            ".config/nextest.toml",
+            """[profile.default]
+slow-timeout = { period = "60s", terminate-after = 1, grace-period = "1s" }
+""",
+        )
+        self.run_command(
+            "cargo",
+            "nextest",
+            "run",
+            "--no-run",
+            options=CommandOptions(timeout=COMPILE_TIMEOUT),
+        )
+        started = time.monotonic()
+        with self.assertRaises(subprocess.TimeoutExpired):
+            self.run_command(
+                "cargo", "nextest", "run", options=CommandOptions(timeout=2)
+            )
+        marker = self.repo / "survived.marker"
+        # The test would write its marker four seconds after it started; give
+        # it a little more than that before concluding it was stopped.
+        while time.monotonic() - started < 6 and not marker.exists():
+            time.sleep(0.1)
+        self.assertFalse(
+            marker.exists(),
+            "A test that ignores SIGTERM must still stop with its process group",
         )
 
     def test_timeouts_terminate_a_hanging_test(self):
