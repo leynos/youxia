@@ -339,3 +339,8 @@ PATH. The pre-existing redundant-homepage Cargo manifest warning remains; all
 commands succeed. No hosted workflows, secrets or environment settings were
 modified remotely. The existing untracked nohup.out is user-owned and remains
 untouched; generated Cargo.lock and lcov.info are excluded from this commit.
+
+Revision note (2026-11-15): The Windows-mounted checkout ignores filesystem
+mode differences. Record executable script modes explicitly in Git and verify
+them by exporting the index to a temporary Linux directory. Both build and
+toolchain preflights pass from that export. No source logic changed.
