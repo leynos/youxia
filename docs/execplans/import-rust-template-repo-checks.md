@@ -519,3 +519,39 @@ and linked from the users' guide and the contents file. The property-testing
 check stays deferred to issue #8 because Hypothesis is a new dependency, and
 the plan's dependency-approval gate applies to it. The tooling suite contains
 45 tests.
+
+Revision note (2026-11-15 follow-up round): The review's reply to that
+reconciliation accepted the new modules and named what was still thin.
+`test_pins.py` now also refuses a missing pin file and a component name holding
+a space, compares the reader's output exactly rather than through `strip()`,
+and maps every mold architecture alias while refusing an unmapped machine.
+`test_build_tools.py` records the tools each mode invokes, so
+`--toolchain-only` is shown to call no linker and `--coverage-only` to call
+clang and lld but not mold. `test_support.py` fingerprints every file under the
+caller's `.git`, which catches a loose object written inside an existing
+fan-out directory that a list of top-level names would miss.
+`test_workflows.py` now accepts an `install-mold` input only on a step that
+uses the shared `setup-rust` action, with a fixture for an unrelated action
+that accepts the key. The migration guide distinguishes `make check-fmt` from
+`make fmt`, adds `tests/tooling/` to the copied files, requires
+`cargo-llvm-cov` only for `make coverage`, and states that `make all` still
+runs without cargo-nextest.
+
+The property check is now met without a new dependency.
+`tests/tooling/test_properties.py` generates bounded cases from a fixed seed
+for the pin readers, the coverage exclusion and checksum-row validation:
+generated nextest layouts must parse, gain only `default-filter`, stay
+byte-identical on a second run and be refused when they already set a filter;
+generated pins must round-trip through padding and be refused when they hold
+whitespace, several lines or a component separator; zero, duplicate or
+mismatched checksum rows must stop before extraction while one matching row
+reaches it. Hypothesis remains the recorded upgrade in issue #8 and the
+developers' guide.
+
+A controlled mutation experiment ran in disposable copies of the working tree.
+Nine guards were removed one at a time and the guarded test failed in every
+case: the pin whitespace rule, the missing-pin rule, the unsupported
+architecture rule, the component separator rule, the coverage exclusion's
+foreign-filter refusal, the duplicate-checksum refusal, the workflow action
+requirement, the child-environment `GIT_INDEX_FILE` filter, and the
+`--toolchain-only` linker skip. The tooling suite contains 63 tests.

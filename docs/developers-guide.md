@@ -68,6 +68,15 @@ rather than duplicate pin parsing or installation logic. `make test-tooling`
 exercises public targets in temporary repositories with child-only
 environments, including real Cargo routing and timeout failures.
 
+The suite is standard-library `unittest`. Example tests carry one case per
+contract; `tests/tooling/test_properties.py` adds bounded generated cases from
+a fixed seed for the invariants that hold across many inputs, such as a pin
+that must round-trip through any padding. Generation stays in the standard
+library because the harness takes no third-party dependency. Hypothesis would
+replace the handwritten generators with shrinking and better distribution; it
+is tracked in [issue #8](https://github.com/leynos/youxia/issues/8), which the
+plan gates on owner approval.
+
 `make check-build-tools` checks the pinned toolchain and components, clang, and
 mold. `make check-rust-toolchain` checks only Rust; `make check-coverage-tools`
 checks Rust, clang, and lld. These commands set `RUSTUP_AUTO_INSTALL=0` and

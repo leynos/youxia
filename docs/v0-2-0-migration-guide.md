@@ -3,12 +3,12 @@
 ## Who should read this
 
 Read this guide if you rendered a Youxia project before v0.2.0 and keep its
-`Makefile`, `.config/nextest.toml`, `scripts/` and `tools/` pins alongside your
-own code. The release imports the Rust-template repository checks, so the
-public gates now lint YAML, GitHub Actions workflows and shell scripts, format
-Git-selected Markdown, and separate compile-time test targets into their own
-lane. A project that consumes the rendered crate without keeping those build
-files has nothing to migrate.
+`Makefile`, `.config/nextest.toml`, `scripts/`, `tests/tooling/` and `tools/`
+pins alongside your own code. The release imports the Rust-template repository
+checks, so the public gates now lint YAML, GitHub Actions workflows and shell
+scripts, format Git-selected Markdown, and separate compile-time test targets
+into their own lane. A project that consumes the rendered crate without keeping
+those build files has nothing to migrate.
 
 ## Impact at a glance
 
@@ -16,8 +16,9 @@ files has nothing to migrate.
 | ------------------ | --------------- | ------------------------------------------------------------------------------------------------ |
 | Required           | Gate tools      | Install `yamllint`, `actionlint`, ShellCheck, `mdtablefix` 0.6.1, `uv` and Python 3.11 or newer. |
 | Required           | Test lanes      | Run `make test-ui` for `tests/compile_*.rs`, which `make test` now leaves to that lane.          |
-| Required           | Build files     | Copy the v0.2.0 `Makefile`, `.config/nextest.toml`, `scripts/` and `tools/` into the project.    |
+| Required           | Build files     | Copy the v0.2.0 `Makefile`, `.config/nextest.toml`, `scripts/`, `tests/tooling/` and `tools/`.   |
 | Required if called | `make coverage` | Install `cargo-nextest`; coverage refuses to start without it.                                   |
+| Required if called | Coverage        | Install `cargo-llvm-cov`; `make coverage` runs it and no other target does.                      |
 | Recommended        | Test runner     | Install `cargo-nextest` 0.9.100 or newer for bounded per-test and whole-run timeouts.            |
 | Optional           | CodeScene       | Adopt the CodeScene upload workflow if the project publishes code health.                        |
 
@@ -65,15 +66,22 @@ with no compile-time contracts.
 An existing target can fail on something it never checked before, so read the
 row for every target the project already calls.
 
-| Target                  | New behaviour                                                                                                          |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `make all`              | Runs formatting, linting, ordinary and compile-time tests, the tooling contracts, the workflow contracts and spelling. |
-| `make lint`             | Checks YAML, GitHub Actions workflows and shell scripts before documentation, Clippy and Whitaker.                     |
-| `make check-fmt`, `fmt` | Format the Git-selected Markdown, including untracked files, through `mdtablefix`.                                     |
-| `make test`             | Excludes `tests/compile_*.rs` under cargo-nextest; run `make test-ui` for those targets.                               |
-| `make coverage`         | Sets LLVM code generation and excludes the compile-time targets; it fails when cargo-nextest is absent.                |
+| Target           | New behaviour                                                                                                          |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `make all`       | Runs formatting, linting, ordinary and compile-time tests, the tooling contracts, the workflow contracts and spelling. |
+| `make lint`      | Checks YAML, GitHub Actions workflows and shell scripts before documentation, Clippy and Whitaker.                     |
+| `make check-fmt` | Verifies the Rust formatting and the Git-selected Markdown, including untracked files, through `mdtablefix`.           |
+| `make fmt`       | Rewrites the same Rust and Markdown sources in place.                                                                  |
+| `make test`      | Excludes `tests/compile_*.rs` under cargo-nextest; run `make test-ui` for those targets.                               |
+| `make coverage`  | Sets LLVM code generation and excludes the compile-time targets; it fails when cargo-nextest is absent.                |
 
 _Table 2: Targets whose behaviour changed in v0.2.0._
+
+`make all` still runs every target without cargo-nextest. `make test` and
+`make test-ui` fall back to `cargo test`, which runs the compile-time targets
+in the ordinary lane and offers no per-test timeout; `make test-tooling` is a
+standard-library Python suite that never invokes the runner. Only
+`make coverage` refuses to run, and only `make coverage` needs `cargo-llvm-cov`.
 
 ## 4. Copy the v0.2.0 build files
 
@@ -87,6 +95,8 @@ project rather than retyping them, because the checks assert their layout:
 - `.config/nextest.toml`, which defines the ordinary, UI and timeout profiles.
 - `scripts/`, which holds the build-tool installer and checker, the shared pin
   reader and the coverage exclusion.
+- `tests/tooling/`, which holds the integration contracts `make test-tooling`
+  runs; without it that target has nothing to discover.
 - `tools/mold/` and `tools/nextest/`, which hold the pinned versions and the
   mold checksums.
 
@@ -108,8 +118,8 @@ running through the ordinary lane.
 
 - [ ] Install `yamllint`, `actionlint`, ShellCheck, `mdtablefix` 0.6.1, `uv`
       and Python 3.11 or newer.
-- [ ] Copy the v0.2.0 `Makefile`, `.config/nextest.toml`, `scripts/` and
-      `tools/`.
+- [ ] Copy the v0.2.0 `Makefile`, `.config/nextest.toml`, `scripts/`,
+      `tests/tooling/` and `tools/`.
 - [ ] Install `cargo-nextest` 0.9.100 or newer.
 - [ ] Add `make test-ui` to local and hosted validation.
 - [ ] Run `make check-build-tools` and resolve what it reports.
