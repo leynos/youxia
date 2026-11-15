@@ -1,0 +1,510 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:df12:ishiban:lody-session-projection:1",
+  "title": "Proposed Ishiban Lody session projection v1",
+  "description": "New read model. This is not the upstream session-observe v1 wire schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "profile_id",
+    "workspace_id",
+    "session_id",
+    "history_backend",
+    "execution",
+    "evidence",
+    "freshness",
+    "last_confirmed_at",
+    "archived",
+    "active_turns",
+    "work_item_links",
+    "workflow_stage",
+    "history_availability"
+  ],
+  "properties": {
+    "workspace_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "machine_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 512
+    },
+    "title": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 2048
+    },
+    "history_backend": {
+      "enum": [
+        "loro",
+        "roost",
+        "unknown"
+      ]
+    },
+    "execution": {
+      "enum": [
+        "idle",
+        "pending",
+        "running",
+        "waiting",
+        "unknown"
+      ]
+    },
+    "evidence": {
+      "enum": [
+        "metadata",
+        "persisted"
+      ],
+      "description": "metadata means catalogue-only evidence; persisted means a locally recoverable history-derived projection. Neither value proves a peer observed the state."
+    },
+    "freshness": {
+      "enum": [
+        "current",
+        "stale",
+        "catching_up",
+        "unknown",
+        "unsupported",
+        "corrupt"
+      ],
+      "description": "Freshness of the evidence selected by evidence. Unsupported history does not make a successfully synchronized catalogue stale."
+    },
+    "last_confirmed_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time",
+      "description": "Last confirmed time for the selected evidence, not the time this JSON response was serialized."
+    },
+    "archived": {
+      "type": "boolean"
+    },
+    "active_turns": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/active_turn"
+      },
+      "maxItems": 256,
+      "uniqueItems": true,
+      "description": "Only non-terminal user turns. Distinct objects must also have distinct user_turn_id values; the publisher enforces this key constraint."
+    },
+    "latest_turn": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/turn"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "repo_full_name": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 512
+    },
+    "branch_name": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 512
+    },
+    "pull_requests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "url",
+          "source"
+        ],
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2048
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxItems": 64
+    },
+    "work_item_links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "evidence_uri",
+          "mapping_revision"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "evidence_uri": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048,
+            "format": "uri"
+          },
+          "mapping_revision": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxItems": 64
+    },
+    "workflow_stage": {
+      "enum": [
+        null,
+        "planning",
+        "planned",
+        "pending_review",
+        "refining",
+        "merged"
+      ],
+      "description": "External workflow stage, never inferred from execution. With multiple links, publish a stage only when the mapping policy selects one authoritative item or all applicable evidence agrees; otherwise null."
+    },
+    "workflow_evidence_uri": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 2048,
+      "format": "uri"
+    },
+    "failure_summary": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 4096
+    },
+    "profile_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Local deployment/account profile namespace; not a Lody workspace identifier."
+    },
+    "history_availability": {
+      "enum": [
+        "not_requested",
+        "loading",
+        "ready",
+        "unsupported",
+        "unavailable",
+        "corrupt"
+      ],
+      "description": "History capability/readiness, independent of whether catalogue metadata is current. Cached persisted evidence can remain stale when history is unavailable."
+    },
+    "machine_online_status": {
+      "enum": [
+        "online",
+        "offline",
+        "unknown"
+      ],
+      "description": "Independent presence verdict. Absence on an unsynchronized presence transport is unknown, not offline."
+    }
+  },
+  "$defs": {
+    "turn": {
+      "type": "object",
+      "required": [
+        "user_turn_id",
+        "state"
+      ],
+      "properties": {
+        "user_turn_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "assistant_turn_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 256
+        },
+        "state": {
+          "enum": [
+            "pending",
+            "running",
+            "unknown",
+            "completed",
+            "failed",
+            "canceled"
+          ]
+        },
+        "duration_ms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "active_turn": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/turn"
+        },
+        {
+          "properties": {
+            "state": {
+              "enum": [
+                "pending",
+                "running",
+                "unknown"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "evidence": {
+            "const": "metadata"
+          }
+        },
+        "required": [
+          "evidence"
+        ]
+      },
+      "then": {
+        "properties": {
+          "execution": {
+            "const": "unknown"
+          },
+          "active_turns": {
+            "maxItems": 0
+          },
+          "latest_turn": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "workflow_stage": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "workflow_stage"
+        ]
+      },
+      "then": {
+        "required": [
+          "workflow_evidence_uri"
+        ],
+        "properties": {
+          "workflow_evidence_uri": {
+            "type": "string",
+            "minLength": 1
+          },
+          "work_item_links": {
+            "minItems": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "freshness": {
+            "const": "current"
+          }
+        },
+        "required": [
+          "freshness"
+        ]
+      },
+      "then": {
+        "properties": {
+          "last_confirmed_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "evidence": {
+            "const": "persisted"
+          }
+        },
+        "required": [
+          "evidence"
+        ]
+      },
+      "then": {
+        "properties": {
+          "history_backend": {
+            "enum": [
+              "loro",
+              "roost"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "evidence": {
+            "const": "persisted"
+          },
+          "freshness": {
+            "const": "current"
+          }
+        },
+        "required": [
+          "evidence",
+          "freshness"
+        ]
+      },
+      "then": {
+        "properties": {
+          "history_availability": {
+            "const": "ready"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "execution": {
+            "const": "idle"
+          }
+        },
+        "required": [
+          "execution"
+        ]
+      },
+      "then": {
+        "properties": {
+          "active_turns": {
+            "maxItems": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "execution": {
+            "const": "running"
+          }
+        },
+        "required": [
+          "execution"
+        ]
+      },
+      "then": {
+        "properties": {
+          "active_turns": {
+            "minItems": 1,
+            "contains": {
+              "properties": {
+                "state": {
+                  "const": "running"
+                }
+              },
+              "required": [
+                "state"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "execution": {
+            "const": "pending"
+          }
+        },
+        "required": [
+          "execution"
+        ]
+      },
+      "then": {
+        "properties": {
+          "active_turns": {
+            "minItems": 1,
+            "contains": {
+              "properties": {
+                "state": {
+                  "const": "pending"
+                }
+              },
+              "required": [
+                "state"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "execution": {
+            "const": "waiting"
+          }
+        },
+        "required": [
+          "execution"
+        ]
+      },
+      "then": {
+        "properties": {
+          "active_turns": {
+            "minItems": 1
+          }
+        }
+      }
+    }
+  ],
+  "$comment": "Proposed adapter output limits, not upstream Lody field limits. The publisher also enforces a serialized-byte cap. Schema validation must enable date-time/URI format assertions. Storage validates distinct active user_turn_id values, mapping consistency, and monotonic evidence revisions."
+}
