@@ -497,3 +497,25 @@ setup action, a `run:` step that merely names it installs nothing; an
 installation now counts only when the step holding the key invokes an action,
 with a `run:`-step fixture that the earlier check wrongly accepted. The tooling
 suite contains 29 tests.
+
+Revision note (2026-11-15 pre-merge checks): The approval review's automated
+round failed three pre-merge checks. The testing check named untested branches
+in the imported scripts; four new modules now cover them. `test_installer.py`
+serves a checksummed archive through a fake download, asserts that the
+versioned top-level directory is stripped under the prefix and that rustup is
+asked for the pinned toolchain and components, exercises
+`make install-cranelift` and its repair diagnostic, and fails a host without
+rustup. `test_pins.py` rejects a two-line pin, an internally spaced pin and a
+comma inside a component name, and shows that padding is trimmed and the
+component order preserved. `test_exclusion.py` covers a missing profile file, a
+missing default table and a checkout with no compile-time targets, and checks
+that the configuration is left unchanged where the script says so.
+`test_build_tools.py` gains the `--toolchain-only` and `--coverage-only` modes:
+the first inspects no linker or runner, the second accepts a toolchain without
+the Cranelift backend that the full check still requires, and an unrecognized
+mode prints the usage text. The user-facing check is met by
+`docs/v0-2-0-migration-guide.md`, written against the style guide's skeleton
+and linked from the users' guide and the contents file. The property-testing
+check stays deferred to issue #8 because Hypothesis is a new dependency, and
+the plan's dependency-approval gate applies to it. The tooling suite contains
+45 tests.
