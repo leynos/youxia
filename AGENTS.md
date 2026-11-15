@@ -247,7 +247,7 @@ cloned only on insertion, and error context is built lazily. See
   - `make test` executes:
 
     ```makefile
-    TEST_CMD := $(if $(shell $(CARGO) nextest --version 2>/dev/null),nextest run,test)
+    TEST_CMD := $(if $(shell RUSTUP_AUTO_INSTALL=0 $(CARGO) nextest --version 2>/dev/null),nextest run,test)
     test: check-build-tools
     test: export RUSTFLAGS := $(DEV_RUST_FLAGS)
     $(CARGO) $(TEST_CMD) $(TEST_FLAGS) $(TEST_UI_EXCLUDE) $(BUILD_JOBS)
