@@ -1,23 +1,9 @@
-"""Exercise the shared checker against valid and deliberately leaking callers."""
+"""Exercise the shared workflow scanner against valid and deliberately leaking callers."""
 
-import re
 import shutil
-from typing import NamedTuple
 
 from support import ROOT, CommandOptions, RepositoryTest
-
-JOB_HEADING = re.compile(r"(?m)^  (?P<name>[A-Za-z0-9_-]+):\s*$")
-RUN_KEY = re.compile(r"(?m)^(?P<indent>[ ]*)(?:- )?run:[ ]*(?P<value>.*)$")
-TEST_COMMAND = re.compile(r"^make test(?:\s|$)")
-BLOCK_MARKERS = frozenset({"|", ">", "|-", ">-", "|+", ">+"})
-MOLD_INSTALL = re.compile(r"(?m)^\s+install-mold:\s*['\"]?true['\"]?$")
-STEP_ITEM = re.compile(r"(?m)^(?P<indent>[ ]*)-[ ](?P<opening>.*)$")
-# `install-mold` is an input to the shared Rust setup action. An unrelated
-# action receiving the key ignores it, so only the reviewed action path may
-# claim the installation; a third-party action that reuses the name does not.
-MOLD_INSTALLING_ACTION = re.compile(
-    r"uses:[ ]*leynos/shared-actions/\.github/actions/setup-rust(?:@|\s|$)"
-)
+from workflow_lane import jobs_missing_mold, runs_test_lane, test_lane_jobs
 
 # Mold is installed in `lint` only. A check that searches the whole workflow
 # would accept the `test` job's `make test` step, which cannot link.
@@ -111,6 +97,26 @@ jobs:
       - run: make test
 """
 
+# A `run:` block can quote the action path and the input key inside a shell
+# script. Those lines are text rather than keys, so a check that searched a
+# step's raw text would accept a job that installs nothing.
+MOLD_KEY_QUOTED_IN_A_BLOCK = """\
+name: Fixture
+
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          cat <<'EOF' > snippet.yml
+          uses: leynos/shared-actions/.github/actions/setup-rust@0000000000000000000000000000000000000000
+          EOF
+          install-mold: 'true'
+      - run: make test
+"""
+
 # `install-mold` is an input to the shared setup action. Naming the key inside
 # a shell step provisions nothing, so a check that searches only for the key
 # would accept a job that never installs the linker.
@@ -128,142 +134,39 @@ jobs:
       - run: make test
 """
 
+# YAML mapping keys may appear in either order. A check that read only the
+# lines above the input would reject a step that does install the linker.
+MOLD_INSTALL_LISTED_AFTER_WITH = """\
+name: Fixture
 
-class _LineScan(NamedTuple):
-    """State that one workflow line leaves the scan in."""
+on: push
 
-    body_indent: int | None
-    runs_test: bool
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - with:
+          install-mold: 'true'
+        uses: leynos/shared-actions/.github/actions/setup-rust@0000000000000000000000000000000000000000
+      - run: make test
+"""
 
+# The action may also open the step. A check that expected the reference to
+# continue a step would report this valid installation as missing.
+MOLD_INSTALL_OPENING_THE_STEP = """\
+name: Fixture
 
-def _indent(line: str) -> int:
-    """Count the leading spaces that decide block-scalar membership."""
-    return len(line) - len(line.lstrip())
+on: push
 
-
-def _in_block_body(line: str, body_indent: int | None) -> bool:
-    """Say whether a line continues an already-open block scalar."""
-    if body_indent is None:
-        return False
-    return not line.strip() or _indent(line) > body_indent
-
-
-def _inline_command(line: str) -> tuple[int | None, str | None]:
-    """Split a `run:` line into any block it opens and any command it holds."""
-    run = RUN_KEY.match(line)
-    if run is None:
-        return None, None
-    value = run.group("value").strip()
-    if value in BLOCK_MARKERS:
-        return _indent(run.group("indent")), None
-    return None, value
-
-
-def _classify_line(line: str, body_indent: int | None) -> _LineScan:
-    """Track block state and report whether the line invokes `make test`."""
-    if _in_block_body(line, body_indent):
-        return _LineScan(body_indent, bool(TEST_COMMAND.match(line.strip())))
-    opened, command = _inline_command(line)
-    return _LineScan(opened, command is not None and bool(TEST_COMMAND.match(command)))
-
-
-def test_step_offsets(block: str) -> list[int]:
-    """Locate every `make test` invocation in one job, inline or in a block.
-
-    Workflows write the lane either as `run: make test` or as a `run: |` block
-    whose following, more indented lines hold the commands. Tracking the block
-    indent keeps a job's other steps and its comments out of the search.
-    """
-    offsets: list[int] = []
-    body_indent: int | None = None
-    offset = 0
-    for line in block.splitlines(keepends=True):
-        body_indent, runs_test = _classify_line(line, body_indent)
-        if runs_test:
-            offsets.append(offset)
-        offset += len(line)
-    return offsets
-
-
-def runs_test_lane(workflow_text: str) -> bool:
-    """Say whether a workflow or job invokes the public test lane."""
-    return bool(test_step_offsets(workflow_text))
-
-
-def test_lane_jobs(workflow_text: str) -> list[tuple[str, str]]:
-    """Name the jobs that run `make test`, with each job's own block.
-
-    A text splitter is sufficient here: a workflow indents job identifiers
-    under `jobs:` by exactly two spaces and job content by four or more, so a
-    two-space mapping key that starts a line begins a job.
-    """
-    headings = [
-        (match.start(), match.group("name"))
-        for match in JOB_HEADING.finditer(workflow_text)
-    ]
-    jobs = []
-    for index, (start, name) in enumerate(headings):
-        end = (
-            headings[index + 1][0] if index + 1 < len(headings) else len(workflow_text)
-        )
-        block = workflow_text[start:end]
-        if runs_test_lane(block):
-            jobs.append((name, block))
-    return jobs
-
-
-def _step_before(block: str, offset: int) -> tuple[int, str] | None:
-    """Return the start offset and opening text of the step holding `offset`."""
-    items = list(STEP_ITEM.finditer(block, 0, offset))
-    if not items:
-        return None
-    last = items[-1]
-    return last.start(), last.group("opening")
-
-
-def _installs_mold(block: str, start: int, offset: int) -> bool:
-    """Say whether the step opening at `start` hands the key to the installer.
-
-    A `run:` step that merely names the key provisions nothing, and neither
-    does an action that has no such input. The installation counts only when
-    the step holding the key invokes the shared Rust setup action.
-    """
-    return bool(MOLD_INSTALLING_ACTION.search(block, start, offset))
-
-
-def mold_installation_offsets(block: str) -> list[int]:
-    """Locate steps that install mold through the shared setup action."""
-    offsets: list[int] = []
-    for match in MOLD_INSTALL.finditer(block):
-        step = _step_before(block, match.start())
-        if step is None:
-            continue
-        start, _ = step
-        if _installs_mold(block, start, match.start()):
-            offsets.append(start)
-    return offsets
-
-
-def installs_mold_before_each_test_step(block: str) -> bool:
-    """Say whether every test step has a mold installation earlier in its job.
-
-    A later install cannot help: the step that links with mold has already
-    failed by then, so ordering is part of the contract rather than incidental.
-    """
-    installations = mold_installation_offsets(block)
-    return all(
-        any(installed < step for installed in installations)
-        for step in test_step_offsets(block)
-    )
-
-
-def jobs_missing_mold(workflow_text: str) -> list[str]:
-    """Name test-lane jobs that do not install mold before their test steps."""
-    return [
-        name
-        for name, block in test_lane_jobs(workflow_text)
-        if not installs_mold_before_each_test_step(block)
-    ]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: leynos/shared-actions/.github/actions/setup-rust@0000000000000000000000000000000000000000
+        with:
+          install-mold: 'true'
+      - run: make test
+"""
 
 
 class WorkflowTests(RepositoryTest):
@@ -277,6 +180,15 @@ class WorkflowTests(RepositoryTest):
             "The fixture must still own exactly one test lane",
         )
         self.assertEqual(jobs_missing_mold(fixture), ["test"], expectation)
+
+    def assert_fixture_installs_mold(self, fixture: str, expectation: str) -> None:
+        """Assert a fixture owns a test lane the checker reports as provisioned."""
+        self.assertEqual(
+            [name for name, _ in test_lane_jobs(fixture)],
+            ["test"],
+            "The fixture must still own exactly one test lane",
+        )
+        self.assertEqual(jobs_missing_mold(fixture), [], expectation)
 
     def test_workflows_running_the_test_lane_install_the_dev_linker(self) -> None:
         """Provision mold wherever a workflow exercises the public test lane.
@@ -348,6 +260,27 @@ class WorkflowTests(RepositoryTest):
         self.assert_fixture_is_missing_mold(
             MOLD_KEY_ON_A_LOOKALIKE_ACTION,
             "A look-alike action must not satisfy the installation",
+        )
+
+    def test_action_reference_quoted_in_a_block_installs_nothing(self) -> None:
+        """Text inside a shell block cannot stand in for an action step."""
+        self.assert_fixture_is_missing_mold(
+            MOLD_KEY_QUOTED_IN_A_BLOCK,
+            "A quoted action reference must not satisfy the installation",
+        )
+
+    def test_the_setup_action_may_list_its_input_before_uses(self) -> None:
+        """Key order inside a step mapping does not change what it installs."""
+        self.assert_fixture_installs_mold(
+            MOLD_INSTALL_LISTED_AFTER_WITH,
+            "A step that lists `with:` before `uses:` still installs mold",
+        )
+
+    def test_the_setup_action_may_open_the_step(self) -> None:
+        """The action reference may be the step's opening key."""
+        self.assert_fixture_installs_mold(
+            MOLD_INSTALL_OPENING_THE_STEP,
+            "A step written as `- uses:` still installs mold",
         )
 
     def test_shared_checker_rejects_a_pr_secret_leak(self) -> None:
