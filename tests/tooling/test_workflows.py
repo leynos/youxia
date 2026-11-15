@@ -11,6 +11,8 @@ RUN_KEY = re.compile(r"(?m)^(?P<indent>[ ]*)(?:- )?run:[ ]*(?P<value>.*)$")
 TEST_COMMAND = re.compile(r"^make test(?:\s|$)")
 BLOCK_MARKERS = frozenset({"|", ">", "|-", ">-", "|+", ">+"})
 MOLD_INSTALL = re.compile(r"(?m)^\s+install-mold:\s*['\"]?true['\"]?$")
+STEP_ITEM = re.compile(r"(?m)^(?P<indent>[ ]*)-[ ](?P<opening>.*)$")
+USES_KEY = re.compile(r"(?m)^[ ]*uses:[ ]*\S")
 
 # Mold is installed in `lint` only. A check that searches the whole workflow
 # would accept the `test` job's `make test` step, which cannot link.
@@ -65,6 +67,23 @@ jobs:
       - run: |
           echo preparing
           make test
+"""
+
+# `install-mold` is an input to the shared setup action. Naming the key inside
+# a shell step provisions nothing, so a check that searches only for the key
+# would accept a job that never installs the linker.
+MOLD_KEY_IN_A_RUN_STEP = """\
+name: Fixture
+
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          install-mold: 'true'
+      - run: make test
 """
 
 
@@ -151,13 +170,44 @@ def test_lane_jobs(workflow_text: str) -> list[tuple[str, str]]:
     return jobs
 
 
+def _step_before(block: str, offset: int) -> tuple[int, str] | None:
+    """Return the start offset and opening text of the step holding `offset`."""
+    items = list(STEP_ITEM.finditer(block, 0, offset))
+    if not items:
+        return None
+    last = items[-1]
+    return last.start(), last.group("opening")
+
+
+def _is_action_step(block: str, start: int, opening: str, offset: int) -> bool:
+    """Say whether the step at `start` invokes an action before `offset`."""
+    return opening.startswith("uses:") or bool(USES_KEY.search(block, start, offset))
+
+
+def mold_installation_offsets(block: str) -> list[int]:
+    """Locate steps that install mold as an input to an action.
+
+    A `run:` step that merely names the key provisions nothing, so an
+    installation counts only when the step holding the key invokes an action.
+    """
+    offsets: list[int] = []
+    for match in MOLD_INSTALL.finditer(block):
+        step = _step_before(block, match.start())
+        if step is None:
+            continue
+        start, opening = step
+        if _is_action_step(block, start, opening, match.start()):
+            offsets.append(start)
+    return offsets
+
+
 def installs_mold_before_each_test_step(block: str) -> bool:
     """Say whether every test step has a mold installation earlier in its job.
 
     A later install cannot help: the step that links with mold has already
     failed by then, so ordering is part of the contract rather than incidental.
     """
-    installations = [match.start() for match in MOLD_INSTALL.finditer(block)]
+    installations = mold_installation_offsets(block)
     return all(
         any(installed < step for installed in installations)
         for step in test_step_offsets(block)
@@ -243,6 +293,19 @@ class WorkflowTests(RepositoryTest):
             jobs_missing_mold(MULTILINE_TEST_STEP),
             ["test"],
             "A block-scalar lane without mold must be reported",
+        )
+
+    def test_mold_install_must_belong_to_an_action_step(self) -> None:
+        """A `run:` step that only names the key installs nothing."""
+        self.assertEqual(
+            [name for name, _ in test_lane_jobs(MOLD_KEY_IN_A_RUN_STEP)],
+            ["test"],
+            "The fixture still owns a test lane",
+        )
+        self.assertEqual(
+            jobs_missing_mold(MOLD_KEY_IN_A_RUN_STEP),
+            ["test"],
+            "A key outside an action step must not satisfy the lane",
         )
 
     def test_shared_checker_rejects_a_pr_secret_leak(self) -> None:
