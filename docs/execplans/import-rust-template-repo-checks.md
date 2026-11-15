@@ -165,12 +165,12 @@ Nextest 0.9.116 accepts both imported profiles; no runner upgrade was needed.
 
 Local implementation, negative controls and final review are complete. Hosted
 execution and environment protection are outside scope. The completed change
-affects 39 non-plan files: 2,780 executable/test changed lines, 315
-configuration lines and 1,185 prose lines, counting additions and deletions
+affects 40 non-plan files: 2,982 executable/test changed lines, 315
+configuration lines and 1,191 prose lines, counting additions and deletions
 independently of this plan and classifying `tests/` and `scripts/` as
 executable/test, other non-Markdown build and workflow files as configuration,
 and Markdown as prose. The 24-file, 1,200-executable-line and 250-prose-line
-budgets are exceeded by 15 files, 1,580 lines and 935 lines; configuration
+budgets are exceeded by 16 files, 1,782 lines and 941 lines; configuration
 stays within its 450-line budget. Earlier revisions of this section reported 32
 files and 1,376 executable/test lines; re-running the measurement command above
 against the base it names does not reproduce that figure, and the 2026-11-15
@@ -634,3 +634,23 @@ block bodies read as keys, a comment-blind header, the key accepted from any
 mapping, and a step dash left in place — and each broke its selected test. All
 ten commit gates then passed sequentially on the final tree. The tooling suite
 contains 70 tests.
+
+Revision note (2026-11-15 step boundaries and measurement): The review of
+`c99cc11` found `step_boundaries` reading a dash-prefixed line inside a
+block-scalar body as a step. A heredoc holding a complete `- uses:` mapping
+therefore became a step of its own, and that slice reached `_installs_mold`
+without its `run: |` header, so the quoted installation looked real.
+`_step_items` now skips dashes inside block bodies. The new
+`SETUP_STEP_QUOTED_IN_A_HEREDOC` fixture failed before the fix, with
+`jobs_missing_mold` returning no job, and passes after it. The fixtures moved to
+`tests/tooling/workflow_fixtures.py` so the test module stays below the
+400-line limit. Re-running the measurement against base `2f9b01e` with this
+plan excluded now reports 40 files, 2,982 executable/test lines, 315
+configuration lines and 1,191 prose lines, and Outcomes carries the revised
+overruns. Five guard mutations were run in disposable copies — quoted dashes
+read as steps, block bodies read as keys, a comment-blind header, the key
+accepted from any mapping, and a step dash left in place — and each broke its
+selected test. `make coverage` ran at this tree with the pinned toolchain's
+bundled `ld.lld` and wrote a 577-byte `lcov.info` with two `SF:` and four `DA:`
+records. All ten commit gates and `make coverage` passed. The tooling suite
+contains 71 tests.

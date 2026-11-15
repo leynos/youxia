@@ -79,8 +79,9 @@ rather than duplicate pin parsing or installation logic. `make test-tooling`
 exercises public targets in temporary repositories with child-only
 environments, including real Cargo routing and timeout failures. The workflow
 scanner sits in `tests/tooling/workflow_lane.py`, which reads workflow text
-without a YAML dependency; `tests/tooling/test_workflows.py` holds the fixtures
-and assertions that exercise it.
+without a YAML dependency; `tests/tooling/workflow_fixtures.py` holds the
+sample workflows and `tests/tooling/test_workflows.py` the assertions that
+exercise them.
 
 The suite is standard-library `unittest`. Example tests carry one case per
 contract; `tests/tooling/test_properties.py` adds bounded generated cases from

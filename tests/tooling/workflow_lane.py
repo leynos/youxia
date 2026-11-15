@@ -123,22 +123,51 @@ def test_lane_jobs(workflow_text: str) -> list[tuple[str, str]]:
     return jobs
 
 
+def _step_items(block: str) -> list[tuple[int, int, str]]:
+    """Locate step dashes with their offsets, ignoring quoted block bodies.
+
+    A shell script under `run: |` can hold a dash-prefixed line that looks like
+    a step, including a complete `uses:` mapping. Reading it as a step would
+    hand `_installs_mold` a slice that starts below the block header, so the
+    quoted keys would look real.
+    """
+    items: list[tuple[int, int, str]] = []
+    body_indent: int | None = None
+    offset = 0
+    for line in block.splitlines(keepends=True):
+        if not _in_block_body(line, body_indent):
+            item = STEP_ITEM.match(line)
+            if item is not None:
+                items.append(
+                    (
+                        offset + item.start(),
+                        offset + item.end(),
+                        item.group("indent"),
+                    )
+                )
+            if BLOCK_OPENER.match(line):
+                body_indent = _indent(line)
+        offset += len(line)
+    return items
+
+
 def step_boundaries(block: str) -> list[tuple[int, int]]:
     """Split a job block into its step items, each with its end offset.
 
     Steps share one dash indentation under `steps:`, so a later item at the
-    same indentation ends the current step. A more indented dash belongs to the
-    step's own content, such as a list inside a `run:` block.
+    same indentation ends the current step. A more indented dash outside a
+    block scalar belongs to the step's own content, such as a list under one of
+    its keys.
     """
-    items = list(STEP_ITEM.finditer(block))
+    items = _step_items(block)
     boundaries = []
-    for index, item in enumerate(items):
+    for index, (start, _, indent) in enumerate(items):
         end = len(block)
-        for later in items[index + 1 :]:
-            if later.group("indent") == item.group("indent"):
-                end = later.start()
+        for later, _, later_indent in items[index + 1 :]:
+            if later_indent == indent:
+                end = later
                 break
-        boundaries.append((item.start(), end))
+        boundaries.append((start, end))
     return boundaries
 
 
