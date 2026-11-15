@@ -1,5 +1,6 @@
 """Verify fixture children cannot inherit settings that redirect the repository."""
 
+import hashlib
 import os
 import subprocess
 import tempfile
@@ -96,11 +97,20 @@ class GitIsolationTests(unittest.TestCase):
             "GIT_ALTERNATE_OBJECT_DIRECTORIES": str(common / "objects"),
         }
 
-    def caller_state(self) -> tuple[bytes, list[str]]:
-        """Snapshot the caller's index bytes and its object-store entries."""
-        index = (self.caller / ".git/index").read_bytes()
-        objects = sorted(path.name for path in (self.caller / ".git/objects").iterdir())
-        return index, objects
+    def caller_state(self) -> dict[str, str]:
+        """Fingerprint every file under the caller's `.git` directory.
+
+        Hashing each file rather than listing directory names matters because a
+        loose object is written *inside* an existing fan-out directory: a new
+        object changes what `git add` wrote but adds no new top-level entry.
+        """
+        return {
+            str(path.relative_to(self.caller)): hashlib.sha256(
+                path.read_bytes()
+            ).hexdigest()
+            for path in sorted((self.caller / ".git").rglob("*"))
+            if path.is_file()
+        }
 
     def test_filtered_fixture_git_leaves_the_caller_untouched(self) -> None:
         """Filtering must keep a fixture's `git add` out of the caller's state."""
