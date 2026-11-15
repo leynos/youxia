@@ -165,12 +165,12 @@ Nextest 0.9.116 accepts both imported profiles; no runner upgrade was needed.
 
 Local implementation, negative controls and final review are complete. Hosted
 execution and environment protection are outside scope. The completed change
-affects 40 non-plan files: 3,020 executable/test changed lines, 315
+affects 40 non-plan files: 3,046 executable/test changed lines, 315
 configuration lines and 1,193 prose lines, counting additions and deletions
 independently of this plan and classifying `tests/` and `scripts/` as
 executable/test, other non-Markdown build and workflow files as configuration,
 and Markdown as prose. The 24-file, 1,200-executable-line and 250-prose-line
-budgets are exceeded by 16 files, 1,820 lines and 943 lines; configuration
+budgets are exceeded by 16 files, 1,846 lines and 943 lines; configuration
 stays within its 450-line budget. Earlier revisions of this section reported 32
 files and 1,376 executable/test lines; re-running the measurement command above
 against the base it names does not reproduce that figure, and the 2026-11-15
@@ -677,3 +677,13 @@ lines, 315 configuration lines and 1,193 prose lines, so the executable and
 prose overruns are 1,820 and 943 lines. `ruff check --fix` and `ruff format`
 were then applied to `tests/tooling`, which corrected an unsorted import block
 and three formatting sites without changing behaviour.
+
+Revision note (2026-11-15 disabled mold input): The pre-merge assessment found
+that `MOLD_INSTALL` accepts only `install-mold: true`, yet no fixture set the
+input to `false`. A checker that accepted any value would therefore have passed
+every existing test. `MOLD_INSTALL_DISABLED` now pairs the shared setup action
+with `install-mold: 'false'`, and
+`test_disabled_mold_install_does_not_satisfy_the_lane` requires the lane to be
+reported. A disposable-copy mutant whose pattern accepted any value failed that
+test. The measurement now reports 3,046 executable/test lines, so the
+executable overrun is 1,846 lines.

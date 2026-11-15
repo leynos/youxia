@@ -210,6 +210,24 @@ jobs:
       - run: make test
 """
 
+# `install-mold` is a boolean input. A job that sets it to `false` keeps the
+# linker uninstalled, so a check that accepted any value would pass a job that
+# cannot link.
+MOLD_INSTALL_DISABLED = """\
+name: Fixture
+
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: leynos/shared-actions/.github/actions/setup-rust@0000000000000000000000000000000000000000
+        with:
+          install-mold: 'false'
+      - run: make test
+"""
+
 # The action may also open the step. A check that expected the reference to
 # continue a step would report this valid installation as missing.
 MOLD_INSTALL_OPENING_THE_STEP = """\

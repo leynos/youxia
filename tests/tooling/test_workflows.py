@@ -5,6 +5,7 @@ import shutil
 from support import ROOT, CommandOptions, RepositoryTest
 from workflow_fixtures import (
     LATE_MOLD_INSTALL,
+    MOLD_INSTALL_DISABLED,
     MOLD_INSTALL_LISTED_AFTER_WITH,
     MOLD_INSTALL_OPENING_THE_STEP,
     MOLD_KEY_IN_A_RUN_STEP,
@@ -121,6 +122,13 @@ class WorkflowTests(RepositoryTest):
         self.assert_fixture_is_missing_mold(
             SETUP_STEP_QUOTED_IN_A_HEREDOC,
             "A step quoted inside a heredoc must not satisfy the check",
+        )
+
+    def test_disabled_mold_install_does_not_satisfy_the_lane(self) -> None:
+        """`install-mold: 'false'` leaves the lane without its linker."""
+        self.assert_fixture_is_missing_mold(
+            MOLD_INSTALL_DISABLED,
+            "A disabled installation must not count as an installed linker",
         )
 
     def test_mold_install_must_target_the_setup_action(self) -> None:
