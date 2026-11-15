@@ -1,6 +1,6 @@
 """Check that the public lint and formatting targets reject real defects."""
 
-from support import RepositoryTest
+from support import CommandOptions, RepositoryTest
 
 
 class LintTests(RepositoryTest):
@@ -10,7 +10,7 @@ class LintTests(RepositoryTest):
         path = "settings with spaces.yaml"
         self.write(path, "key: first\nkey: second\n")
         self.track(path)
-        result = self.make("lint-yaml", expected="failure")
+        result = self.make("lint-yaml", command=CommandOptions(expected="failure"))
         self.assertIn("duplication of key", result.stdout)
         self.write(path, "on: true\n")
         self.make("lint-yaml")
@@ -28,7 +28,7 @@ jobs:
       - run: echo '${{ missing.context }}'
 """,
         )
-        result = self.make("lint-actions", expected="failure")
+        result = self.make("lint-actions", command=CommandOptions(expected="failure"))
         self.assertIn("undefined variable", result.stdout)
         self.write(
             path,
@@ -41,7 +41,7 @@ jobs:
         path = "scripts/bad name.sh"
         self.write(path, "#!/bin/sh\necho $unquoted\n")
         self.track(path)
-        result = self.make("lint-shell", expected="failure")
+        result = self.make("lint-shell", command=CommandOptions(expected="failure"))
         self.assertIn("SC2086", result.stdout)
         self.write(path, '#!/bin/sh\necho "valid"\n')
         self.make("lint-shell")
@@ -54,7 +54,9 @@ jobs:
         ):
             with self.subTest(target=target):
                 result = self.make(
-                    target, option + "=not-installed-youxia", expected="failure"
+                    target,
+                    option + "=not-installed-youxia",
+                    command=CommandOptions(expected="failure"),
                 )
                 self.assertIn(diagnostic, result.stdout)
 
@@ -63,7 +65,7 @@ jobs:
         env = {"PATH": str(self.repo / "bin") + ":" + self.env["PATH"]}
         for target in ("lint-yaml", "lint-shell"):
             with self.subTest(target=target):
-                self.make(target, env=env, expected="failure")
+                self.make(target, command=CommandOptions(env=env, expected="failure"))
 
     def test_markdown_check_includes_untracked_and_excludes_ignored(self):
         self.write(".gitignore", "ignored.md\n")
@@ -71,7 +73,7 @@ jobs:
         self.write("draft.md", "# Draft\n\n" + "word " * 40 + "\n")
         self.track(".gitignore")
         options = ("CARGO=true", "CHECK_RUST_TOOLCHAIN=true")
-        self.make("check-fmt", *options, expected="failure")
+        self.make("check-fmt", *options, command=CommandOptions(expected="failure"))
         self.make("fmt", *options)
         self.make("check-fmt", *options)
         self.assertEqual(

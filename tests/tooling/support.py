@@ -7,6 +7,7 @@ import subprocess
 import tempfile
 import unittest
 from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
@@ -32,6 +33,21 @@ EXCLUDED_ENVIRONMENT = frozenset(
         "GIT_ALTERNATE_OBJECT_DIRECTORIES",
     }
 )
+
+
+@dataclass(frozen=True)
+class CommandOptions:
+    """Bound one child command and state the result the caller expects.
+
+    `expected` is either an exit status or `"failure"` for any non-zero exit.
+    """
+
+    expected: int | Literal["failure"] = 0
+    timeout: float = 60
+    env: Mapping[str, str] | None = None
+
+
+DEFAULT_OPTIONS = CommandOptions()
 
 
 def child_environment(source: Mapping[str, str]) -> dict[str, str]:
@@ -86,22 +102,20 @@ class RepositoryTest(unittest.TestCase):
     def run_command(
         self,
         *arguments: str,
-        expected: int | Literal["failure"] = 0,
-        env: Mapping[str, str] | None = None,
-        timeout: float = 60,
+        options: CommandOptions = DEFAULT_OPTIONS,
     ) -> subprocess.CompletedProcess[str]:
         """Run a bounded child; report its complete output on failure."""
         with subprocess.Popen(
             arguments,
             cwd=self.repo,
-            env=self.env | (env or {}),
+            env=self.env | (options.env or {}),
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             start_new_session=True,
         ) as process:
             try:
-                output, _ = process.communicate(timeout=timeout)
+                output, _ = process.communicate(timeout=options.timeout)
             except BaseException:
                 # A failed test must also stop nested Cargo and test processes
                 # before its temporary checkout is removed.
@@ -112,21 +126,19 @@ class RepositoryTest(unittest.TestCase):
                 process.communicate()
                 raise
         result = subprocess.CompletedProcess(arguments, process.returncode, output)
-        if expected == 0:
+        if options.expected == 0:
             self.assertEqual(result.returncode, 0, result.stdout)
-        elif expected == "failure":
+        elif options.expected == "failure":
             self.assertNotEqual(result.returncode, 0, result.stdout)
         else:
-            self.assertEqual(result.returncode, expected, result.stdout)
+            self.assertEqual(result.returncode, options.expected, result.stdout)
         return result
 
     def make(
         self,
         target: str,
         *options: str,
-        expected: int | Literal["failure"] = 0,
-        timeout: float = 60,
-        env: Mapping[str, str] | None = None,
+        command: CommandOptions = DEFAULT_OPTIONS,
     ) -> subprocess.CompletedProcess[str]:
         """Exercise the copied public Makefile without installing prerequisites."""
         return self.run_command(
@@ -134,9 +146,7 @@ class RepositoryTest(unittest.TestCase):
             "--no-print-directory",
             target,
             *options,
-            expected=expected,
-            timeout=timeout,
-            env=env,
+            options=command,
         )
 
     def track(self, *paths: str) -> None:

@@ -2,7 +2,7 @@
 
 import shutil
 
-from support import RepositoryTest
+from support import CommandOptions, RepositoryTest
 
 
 class BuildToolsTests(RepositoryTest):
@@ -60,7 +60,9 @@ esac
         ):
             with self.subTest(toolchain=has_toolchain):
                 self.rustup(toolchain=has_toolchain, component=has_components)
-                result = self.make("check-rust-toolchain", expected="failure")
+                result = self.make(
+                    "check-rust-toolchain", command=CommandOptions(expected="failure")
+                )
                 self.assertIn(message, result.stdout)
                 self.assertFalse(
                     (self.repo / "effects").exists(),
@@ -77,7 +79,7 @@ esac
                 path = self.repo / "bin" / tool
                 original = path.read_text()
                 self.write("bin/" + tool, "#!/bin/sh\nexit 1\n", executable=True)
-                result = self.make(target, expected="failure")
+                result = self.make(target, command=CommandOptions(expected="failure"))
                 self.assertIn(message, result.stdout)
                 path.write_text(original)
 
@@ -94,7 +96,9 @@ esac
                 path = self.repo / "bin" / tool
                 original = path.read_text()
                 path.unlink()
-                result = self.make(target, env=isolated, expected="failure")
+                result = self.make(
+                    target, command=CommandOptions(env=isolated, expected="failure")
+                )
                 self.assertIn(message, result.stdout)
                 self.write("bin/" + tool, original, executable=True)
 
@@ -120,7 +124,9 @@ exit 93
         self.write(
             "bin/tar", "#!/bin/sh\necho unpack >> effects\nexit 94\n", executable=True
         )
-        result = self.make("install-build-tools", expected="failure")
+        result = self.make(
+            "install-build-tools", command=CommandOptions(expected="failure")
+        )
         self.assertIn("checksum mismatch", result.stdout)
         self.assertFalse(
             (self.repo / "effects").exists(),

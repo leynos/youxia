@@ -3,7 +3,7 @@
 import re
 import shutil
 
-from support import ROOT, RepositoryTest
+from support import ROOT, CommandOptions, RepositoryTest
 
 JOB_HEADING = re.compile(r"(?m)^  (?P<name>[A-Za-z0-9_-]+):\s*$")
 TEST_LANE_STEP = re.compile(r"(?m)^\s*(?:-\s*)?run:.*\bmake test(?:\s|$)")
@@ -109,7 +109,7 @@ class WorkflowTests(RepositoryTest):
 
     def test_shared_checker_rejects_a_pr_secret_leak(self) -> None:
         shutil.copytree(ROOT / ".github", self.repo / ".github")
-        self.make("test-workflow-contracts", timeout=120)
+        self.make("test-workflow-contracts", command=CommandOptions(timeout=120))
         path = self.repo / ".github/workflows/ci.yml"
         original = path.read_text()
         path.write_text(
@@ -118,11 +118,14 @@ class WorkflowTests(RepositoryTest):
                 "      BUILD_PROFILE: debug\n      LEAK: ${{ secrets.CS_ACCESS_TOKEN }}",
             )
         )
-        result = self.make("test-workflow-contracts", expected="failure", timeout=120)
+        result = self.make(
+            "test-workflow-contracts",
+            command=CommandOptions(expected="failure", timeout=120),
+        )
         self.assertIn(
             "exactly one workflow may contact CodeScene",
             result.stdout,
             "A PR credential leak must break the coverage contract",
         )
         path.write_text(original)
-        self.make("test-workflow-contracts", timeout=120)
+        self.make("test-workflow-contracts", command=CommandOptions(timeout=120))

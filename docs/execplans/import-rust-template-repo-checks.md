@@ -430,5 +430,8 @@ each fixture compiles from scratch and shares the host's compiler-admission
 queue, so the bound measured queue latency rather than the lane.
 Compile-carrying lanes now receive a five-minute bound, matching the coverage
 fixture. After both repairs the measurement is 32 non-plan files, 1,325
-executable/test lines, 143 configuration lines and 991 prose lines, and every
-gate passes on this tree.
+executable/test lines, 143 configuration lines and 991 prose lines. The
+CodeScene delta then reported the tooling harness's `make` helper for excess
+arguments, so its expected status, bound and environment now travel as a
+`CommandOptions` value object shared with `run_command`. Every gate passes on
+this tree.
