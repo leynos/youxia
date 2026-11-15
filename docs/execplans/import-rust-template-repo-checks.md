@@ -145,27 +145,38 @@ Nextest 0.9.116 accepts both imported profiles; no runner upgrade was needed.
   shared test helpers lacked annotations. Fix all four with regression
   fixtures. The resulting executable-line overrun is recorded in Outcomes under
   the same owner-instruction approval.
+- 2026-11-15: Rebase onto `main` at `2f9b01e`, which merged the native daemon
+  RFC, roadmap and contract documents through PR #6. Resolve
+  `docs/repository-layout.md` by keeping main's wrapping and inserting this
+  import's path entries, and keep main's
+  `.github/workflows/act-validation.yml`, which already installs mold and
+  clang/lld. This branch therefore contributes only the workflow test and the
+  harness changes from its linker commit, and that commit's message says so.
+  Re-measure Outcomes against the new base.
 
 ## Outcomes & retrospective
 
 Local implementation, negative controls and final review are complete. Hosted
 execution and environment protection are outside scope. The completed change
-affects 28 non-plan files: 1,314 executable/test changed lines, 149
-configuration lines and 264 prose lines, counting additions and deletions
+affects 32 non-plan files: 1,325 executable/test changed lines, 143
+configuration lines and 991 prose lines, counting additions and deletions
 independently of this plan. The 24-file, 1,200-executable-line and
-250-prose-line budgets are exceeded by four files, 114 lines and 14 lines;
+250-prose-line budgets are exceeded by eight files, 125 lines and 741 lines;
 configuration stays within its budget. The import's own lint-formatting repairs
-account for one extra file. The 2026-11-15 review instructions to fix the
-underlying failures added `.github/workflows/act-validation.yml`, so that
-hosted Act validation can link with mold, corrected the test-lane guidance, and
-required the coverage guard, per-job workflow check, fixture environment
-filtering and helper type annotations that the first full review identified.
-Reverting a required formatting repair, leaving hosted CI red, keeping
-inaccurate guidance, or leaving those defects unfixed would each defeat the
-import, so the owner's instruction is recorded as the approval the tolerance
-requires. No Rust API, toolchain pin, development backend or shared contract
-was changed. All imported shell scripts and the estate YAML policy match their
-upstream source bytes.
+account for one extra file. The remaining growth is the mechanical `mdtablefix`
+reflow of the five documents `main` merged after this branch left its original
+base (RFC 0001, the roadmap, the daemon-design lessons, its execplan and the
+contracts README) together with the two shared documents the formatter also
+rewrapped; no prose was added or removed. The 2026-11-15 review instructions to
+fix the underlying failures provisioned the Act validation linkers, which
+`main` now supplies, corrected the test-lane guidance, and required the
+coverage guard, per-job workflow check, fixture environment filtering and
+helper type annotations that the first full review identified. Reverting a
+required formatting repair, leaving hosted CI red, keeping inaccurate guidance,
+or leaving those defects unfixed would each defeat the import, so the owner's
+instruction is recorded as the approval the tolerance requires. No Rust API,
+toolchain pin, development backend or shared contract was changed. All imported
+shell scripts and the estate YAML policy match their upstream source bytes.
 
 ## Context and orientation
 
@@ -399,3 +410,25 @@ before initializing a fixture, and its shared helpers carry annotations. The
 mold check inspects each job that runs `make test`, with a two-job negative
 fixture. The user guide lists `cargo-nextest` and `cargo-llvm-cov` as full-gate
 prerequisites. The tooling suite now contains 21 tests.
+
+Revision note (2026-11-15 rebase): `main` advanced to `2f9b01e` while the
+branch awaited review, so the branch was rebased and its commits replayed. Two
+conflicts were resolved by keeping main's content and adding this import's own
+entries: `docs/repository-layout.md` gains the path list for the new
+configuration, scripts and tooling tests, and
+`.github/workflows/act-validation.yml` keeps main's `install-mold` and
+`install-clang-lld` inputs. That workflow already satisfied the earlier
+requirement, so this branch contributes the tooling test that enforces it
+rather than a duplicate provisioning change.
+
+Revision note (2026-11-15 post-rebase gates): The formatting gate rejected the
+documents `main` merged after this branch's original base, because `mdtablefix`
+replaces `mdformat` and enforces its own wrapping, list numbering and emphasis
+rules. One `make fmt` pass reformatted them, and that reflow is committed on
+its own. The ordinary lane test then exceeded the harness's one-minute default:
+each fixture compiles from scratch and shares the host's compiler-admission
+queue, so the bound measured queue latency rather than the lane.
+Compile-carrying lanes now receive a five-minute bound, matching the coverage
+fixture. After both repairs the measurement is 32 non-plan files, 1,325
+executable/test lines, 143 configuration lines and 991 prose lines, and every
+gate passes on this tree.
