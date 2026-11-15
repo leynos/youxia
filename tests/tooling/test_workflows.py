@@ -13,9 +13,11 @@ BLOCK_MARKERS = frozenset({"|", ">", "|-", ">-", "|+", ">+"})
 MOLD_INSTALL = re.compile(r"(?m)^\s+install-mold:\s*['\"]?true['\"]?$")
 STEP_ITEM = re.compile(r"(?m)^(?P<indent>[ ]*)-[ ](?P<opening>.*)$")
 # `install-mold` is an input to the shared Rust setup action. An unrelated
-# action receiving the key ignores it, so only that action may claim the
-# installation.
-MOLD_INSTALLING_ACTION = re.compile(r"uses:[ ]*\S*setup-rust(?:@|\s|$)")
+# action receiving the key ignores it, so only the reviewed action path may
+# claim the installation; a third-party action that reuses the name does not.
+MOLD_INSTALLING_ACTION = re.compile(
+    r"uses:[ ]*leynos/shared-actions/\.github/actions/setup-rust(?:@|\s|$)"
+)
 
 # Mold is installed in `lint` only. A check that searches the whole workflow
 # would accept the `test` job's `make test` step, which cannot link.
@@ -87,6 +89,24 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ~/.cache
+          install-mold: 'true'
+      - run: make test
+"""
+
+# A third-party action may reuse the shared action's name. Only the reviewed
+# `leynos/shared-actions` path is known to install mold, so a name match alone
+# must not satisfy the check.
+MOLD_KEY_ON_A_LOOKALIKE_ACTION = """\
+name: Fixture
+
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: someone/setup-rust@v1
+        with:
           install-mold: 'true'
       - run: make test
 """
@@ -321,6 +341,13 @@ class WorkflowTests(RepositoryTest):
         self.assert_fixture_is_missing_mold(
             MOLD_KEY_ON_AN_UNRELATED_ACTION,
             "Only the shared setup action can satisfy the installation",
+        )
+
+    def test_mold_install_must_use_the_shared_action_path(self) -> None:
+        """A third-party action reusing the name installs nothing here."""
+        self.assert_fixture_is_missing_mold(
+            MOLD_KEY_ON_A_LOOKALIKE_ACTION,
+            "A look-alike action must not satisfy the installation",
         )
 
     def test_shared_checker_rejects_a_pr_secret_leak(self) -> None:

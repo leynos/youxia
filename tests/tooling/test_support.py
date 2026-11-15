@@ -124,6 +124,11 @@ class GitIsolationTests(unittest.TestCase):
             "The hostile environment must redirect a fixture into the caller",
         )
         self.git(self.caller, "reset", "-q", "--hard")
+        # The precondition already wrote this content's blob into the caller's
+        # object store, so staging the same bytes again could reuse it. Change
+        # the fixture first: a leaked object directory then has to accept a
+        # brand-new object before it can pass.
+        (self.fixture / "fixture.txt").write_text("second\n", encoding="utf-8")
         restored = self.caller_state()
         isolated = child_environment(self.hostile_environment())
         self.git(self.fixture, "add", "-A", env=isolated)
