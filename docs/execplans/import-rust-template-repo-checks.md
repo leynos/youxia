@@ -158,22 +158,24 @@ Nextest 0.9.116 accepts both imported profiles; no runner upgrade was needed.
 
 Local implementation, negative controls and final review are complete. Hosted
 execution and environment protection are outside scope. The completed change
-affects 32 non-plan files: 1,424 executable/test changed lines, 143
+affects 32 non-plan files: 1,376 executable/test changed lines, 314
 configuration lines and 991 prose lines, counting additions and deletions
-independently of this plan. The 24-file, 1,200-executable-line and
-250-prose-line budgets are exceeded by eight files, 224 lines and 741 lines;
-configuration stays within its budget. The import's own lint-formatting repairs
-account for one extra file. The remaining growth is the mechanical `mdtablefix`
-reflow of the five documents `main` merged after this branch left its original
-base (RFC 0001, the roadmap, the daemon-design lessons, its execplan and the
-contracts README) together with the two shared documents the formatter also
-rewrapped; no prose was added or removed. The 2026-11-15 review instructions to
-fix the underlying failures provisioned the Act validation linkers, which
-`main` now supplies, corrected the test-lane guidance, and required the
-coverage guard, per-job workflow check, fixture environment filtering and
-helper type annotations that the first full review identified. Reverting a
-required formatting repair, leaving hosted CI red, keeping inaccurate guidance,
-or leaving those defects unfixed would each defeat the import, so the owner's
+independently of this plan and classifying `tests/` and `scripts/` as
+executable/test, other non-Markdown build and workflow files as configuration,
+and Markdown as prose. The 24-file, 1,200-executable-line and 250-prose-line
+budgets are exceeded by eight files, 176 lines and 741 lines; configuration
+stays within its budget. The import's own lint-formatting repairs account for
+one extra file. The remaining growth is the mechanical `mdtablefix` reflow of
+the five documents `main` merged after this branch left its original base (RFC
+0001, the roadmap, the daemon-design lessons, its execplan and the contracts
+README) together with the two shared documents the formatter also rewrapped; no
+prose was added or removed. The 2026-11-15 review instructions to fix the
+underlying failures provisioned the Act validation linkers, which `main` now
+supplies, corrected the test-lane guidance, and required the coverage guard,
+per-job workflow check, fixture environment filtering and helper type
+annotations that the first full review identified. Reverting a required
+formatting repair, leaving hosted CI red, keeping inaccurate guidance, or
+leaving those defects unfixed would each defeat the import, so the owner's
 instruction is recorded as the approval the tolerance requires. No Rust API,
 toolchain pin, development backend or shared contract was changed. All imported
 shell scripts and the estate YAML policy match their upstream source bytes.
@@ -444,3 +446,15 @@ mold check now requires an installation before every test step rather than
 anywhere in the job, with a reversed-order fixture covering a late install. The
 tooling suite contains 22 tests, and the measurement is 32 non-plan files,
 1,424 executable/test lines, 143 configuration lines and 991 prose lines.
+
+Revision note (2026-11-15 second follow-up): The review of the follow-up head
+found four more gaps. `CARGO_ENCODED_RUSTFLAGS` and
+`CARGO_ENCODED_RUSTDOCFLAGS` now join the stripped build settings, because
+Cargo gives the encoded spellings precedence. Timeout cleanup asks with
+`SIGTERM` before escalating to `SIGKILL`, so nextest can stop the tests it
+started in their own process groups. The timeout fixture rejects a run-wide
+"global timeout" when it expects per-test termination. The workflow check reads
+commands inside `run: |` blocks as well as inline `run:` lines, with a
+block-scalar fixture. The tooling suite contains 23 tests, and the measurement
+is 32 non-plan files, 1,376 executable/test lines, 314 configuration lines and
+991 prose lines.
