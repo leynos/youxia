@@ -4,10 +4,13 @@ Goals: give Ishiban trustworthy, resumable session observations; host Agent
 Client Protocol (ACP) agents with native Loro synchronization; and preserve
 liveness and durable progress under load. This roadmap turns [RFC 0001][design]
 into the first observation spike, the second hosting spike, and a controlled
-fleet rollout. The implementation uses async Rust, the Rust ACP SDK,
-ortho-config, native Loro, oauth2, and restson. The source baseline remains
-Lody commit d3179e1f7538b61d0a6acc6be0a324281be4e3c0; the actual deployment
-profile is an early compatibility gate.
+fleet rollout. The [Linux architecture][architecture] and RFC §14 refine the
+component and process boundaries: Magitek supplies bounded ACP in `youxiad`,
+`arun` retains agent transport, and murder implements Flock metadata. The
+implementation uses async Rust, ortho-config, native Loro, oauth2, and restson;
+Magitek owns qualification of its ACP implementation dependency. The source
+baseline remains Lody commit d3179e1f7538b61d0a6acc6be0a324281be4e3c0; the
+actual deployment profile is an early compatibility gate.
 
 The structure follows the [roadmap skill][roadmap-skill] and
 [conventions][roadmap-conventions] in leynos/df12-documentation-skills at
@@ -29,6 +32,11 @@ records the Youxia amendments in §13. The [Comenq lessons][lessons] supply the
 implementation evidence behind those amendments. SQLite remains the initial
 storage baseline; optional Turso qualification in step 5.7 does not block
 either spike.
+
+Linux service/resource enforcement now enters the first hosting slice.
+Transparent turn continuation after daemon death requires the separate
+Magitek/host restoration gate; raw process and byte survival cannot satisfy it.
+All corresponding implementation tasks remain unchecked.
 
 ## 1. Foundational contracts and isolation boundaries
 
@@ -55,18 +63,18 @@ profile? The answer controls whether the observation spike can proceed. See RFC
   - [ ] Success: sanitized fixtures carry source/version provenance; the matrix
     distinguishes observed support from undocumented assumptions.
 
-- [ ] 1.1.2. Qualify the native Flock source and format contract.
+- [ ] 1.1.2. Qualify murder against the native Flock format contract.
 
   - [ ] Requires 1.1.1.
   - [ ] See RFC 0001 §§2.3 and 12.2.
-  - [ ] Record the matching implementation or complete format, licence,
-    supported versions, clocks, tombstones, and native adapter boundary.
+  - [ ] Record murder implementation/format access, licence, supported versions,
+    clocks, tombstones, and its native replica-worker boundary.
   - [ ] Success: an evidence-backed decision identifies a usable native route or
     records a blocking gap. A new codec port requires explicit review-sized work
     before this gate can authorize integration; a JavaScript bridge cannot pass
     it.
 
-- [ ] 1.1.3. Integrate the qualified native catalogue reader.
+- [ ] 1.1.3. Integrate the qualified murder catalogue reader.
 
   - [ ] Requires 1.1.2 and 1.1.1.
   - [ ] See RFC 0001 §§2.3, 5, and 10.1.
@@ -143,13 +151,15 @@ Do the chosen ACP and REST libraries expose the controls the daemon needs? This
 step chooses a minimal patch or adapter before dependent features rely on a
 boundary that does not actually exist. See RFC 0001 §§7, 8, and 12.
 
-- [ ] 1.3.1. Specify the ACP SDK framing and downstream credit contract.
+- [ ] 1.3.1. Qualify the Magitek framing and downstream credit contract.
 
   - [ ] Requires 1.2.1 and 1.2.4.
   - [ ] See RFC 0001 §§7.2, 10, and 12.2.
   - [ ] Trace frame allocation, decode, request, notification, response,
-    callback, and task ownership in the pinned SDK; instrument a slow-consumer
-    probe.
+    callback, and task ownership through Magitek's selected implementation;
+    instrument a slow-consumer probe and retained leases across closure.
+  - [ ] See the [Linux architecture][architecture] §§3.3, 9, and 11. Conditional
+    Wireframe reuse requires the public-API ACP toy and the full budget contract.
   - [ ] Success: the report identifies every retained buffer and permit
     lifetime, records any unbounded path, and specifies the minimal patch
     contract. Hosting still requires the implemented and measured boundary in
@@ -517,7 +527,7 @@ the only copy of agent output. See RFC 0001 §§5 and 7.
     delayed dependencies converge; retry timing and reported eligibility agree.
     Poisoned records stay visible, and recovery cannot replay uncertain prompts.
 
-- [ ] 3.1.4. Qualify native Flock authoring for the selected catalogue format.
+- [ ] 3.1.4. Qualify murder authoring for the selected Flock catalogue format.
 
   - [ ] Requires 1.1.3 and 3.1.2.
   - [ ] See RFC 0001 §§2.3, 5.4, and 7.6.
@@ -554,24 +564,30 @@ Can a noisy, hung, or exited agent leave the host responsive and its outcome
 unambiguous? This step applies the SDK gate to a real child process. See RFC
 0001 §§3, 7, and 9.
 
-- [ ] 3.2.1. Implement supervised ACP process creation and termination.
+- [ ] 3.2.1. Implement systemd-supervised arun and agent execution.
 
   - [ ] Requires 1.3.1, 2.5.2, and 2.2.6.
-  - [ ] See RFC 0001 §§7, 9, 11, and 13.3.
-  - [ ] Freeze executable/arguments/cwd/environment, isolate descendants, retain
-    handles, and drain protocol stdout and diagnostic stderr independently.
+  - [ ] See RFC 0001 §§7, 9, 11, 13.3, and 14, and the
+    [Linux architecture][architecture] §§4–7.
+  - [ ] Qualify the user manager, cgroup v2 controllers, inherited limits, and
+    lingering policy. Use independent arun services with no daemon stop
+    dependency and no automatic runner restart.
+  - [ ] Freeze executable/arguments/cwd/environment, reserve host/workspace/run
+    resources, persist launch intent, and reconcile ambiguous manager replies
+    by the same run ID. Drain stdout and stderr independently.
   - [ ] Success: every incarnation reconciles durable ownership before
     readiness; failed/short-lived runs retain backoff. Hung initialization,
     stderr flood, and retained descendants end explicitly; abort requests
     require join/reap confirmation, and unresolved exit cannot authorize
     ownership transfer.
 
-- [ ] 3.2.2. Implement the ACP frame limits and downstream admission credits.
+- [ ] 3.2.2. Integrate Magitek frame limits and downstream admission credits.
 
-  - [ ] Requires 3.2.1 and 1.3.1. See RFC 0001 §§7, 9, 10, and 13.4.
-  - [ ] Patch the SDK narrowly where required; enforce limits before allocation
-    and through SDK queues. Keep ordered callbacks to bounded routing, with
-    persistent decoder/future ownership across cancellable reads.
+  - [ ] Requires 3.2.1, 3.2.4, and 1.3.1. See RFC 0001 §§7, 9, 10, 13.4, and 14.
+  - [ ] Use Magitek's qualified implementation; enforce limits before allocation
+    and through retained leases and downstream queues. Keep callbacks bounded,
+    retain decoder state across cancellable reads, and poison abandoned logical
+    frames even when abandonment falls between complete arun chunks.
   - [ ] Success: fragmented frames across timer/control events retain every
     byte; valid/oversized floods stay bounded and retain cancellation capacity.
     Slow storage backpressures or explicitly fails the affected producer without
@@ -588,6 +604,31 @@ unambiguous? This step applies the SDK gate to a real child process. See RFC
     visible session ID cannot absorb an old result, and a reclaimed claim never
     authorizes prompt replay without idempotency or resolving evidence.
 
+- [ ] 3.2.4. Implement bounded arun replay and fenced reattachment.
+
+  - [ ] Requires 3.2.1 and 3.1.1. See the
+    [runner transport contract](contracts/arun-transport.md).
+  - [ ] Implement contiguous stdout replay, durable inbox acknowledgements,
+    stdin sequence/digest receipts, attachment fencing, finite detached/stall
+    policy, and offline import of completed-run spools and write receipts.
+  - [ ] Success: daemon/socket loss across partial frames loses no committed
+    prefix; stdout saturation never silently truncates protocol bytes. Retained
+    spools keep disk reservations after execution ends; lost write receipts
+    cannot cause duplicate pipe writes or imply semantic acceptance.
+
+- [ ] 3.2.5. Qualify ACP continuation after daemon replacement.
+
+  - [ ] Requires 3.2.2–3.2.4. See the [Linux architecture][architecture] §7
+    and the Magitek restoration extension required there.
+  - [ ] Define versioned negotiation/session/pending-request descriptors,
+    request-ID allocation, host-effect/permission receipts, raw and applied
+    cursors, and replay that performs no repeated external effects.
+  - [ ] Success: crash-window witnesses either restore the original ACP
+    conversation safely or fence mutations with `recovery_required` and an
+    explicit uncertain outcome. Capability advertisement permits transparent
+    continuation only after the restoration path passes; a tested fallback
+    alone cannot advertise it.
+
 ### 3.3. Run a complete turn and publish incremental history
 
 Can the hosted agent and existing Lody peers agree on a turn's durable state?
@@ -602,8 +643,10 @@ and 7.
     supported sessions and route CLI admission to the durable command owner.
   - [ ] Success: a test agent follows initialization/session/prompt transitions;
     unsupported operations fail before admission, and advertised capabilities
-    match installed handlers. Local version skew cannot masquerade as a lost
-    accepted prompt.
+    match installed handlers. Host terminal capability stays unadvertised
+    until a run-bound executor proves aggregate resource, lifetime, and recovery
+    semantics; it cannot spawn into the daemon control cgroup. Local version
+    skew cannot masquerade as a lost accepted prompt.
 
 - [ ] 3.3.2. Route permission decisions through generation-fenced response
   owners.
@@ -714,12 +757,16 @@ and replica recovery? The result defines the fleet admission gate. See RFC 0001
 
 - [ ] 3.5.3. Pass the combined one-agent fault and interoperability gate.
 
-  - [ ] Requires 3.5.1, 3.5.2, and 3.4.3. See RFC 0001 §§10–13.
+  - [ ] Requires 3.5.1, 3.5.2, 3.4.3, and 3.2.5. See RFC 0001 §§10–14.
   - [ ] Require a remote peer to receive fresh renewals while history/import is
     blocked; restart only a worker, disconnect an accepted command's caller, and
     complete/cancel work at full ordinary admission as separate witnesses.
   - [ ] Combine stdout flood, slow storage, stalled REST, pathological import,
     disconnect, and peer observation in one reproducible workload.
+  - [ ] Restart only the daemon while the runner survives; finish an agent
+    during absence; distinguish restoration from the tested recovery-required
+    fallback. Explicit authorization revocation must stop affected runs rather
+    than merely stopping the daemon.
   - [ ] Success: witnesses reject the corresponding false healthy outcome;
     combined latency/memory budgets hold, durable output survives, and uncertain
     prompts remain explicit. Local timer ticks alone cannot pass liveness.
@@ -882,9 +929,11 @@ consume the machine? This step connects internal budgets to service-level
 operation. See RFC 0001 §§3, 6, and 9.
 
 - [ ] 4.3.1. Package Linux service resource and ownership controls.
-  - [ ] Requires 4.1.3 and 4.2.5. See RFC 0001 §§9 and 11.
-  - [ ] Supply systemd units and documented CPU, memory, I/O, process,
-    state-directory, and child-lifecycle boundaries appropriate to Rohga.
+  - [ ] Requires 4.1.3, 4.2.5, and 3.2.1. See RFC 0001 §§9, 11, and 14.
+  - [ ] Extend the first hosting slice's systemd adapter and service policy to
+    measured installation/workspace/fleet limits. Qualify CPU, memory, swap,
+    I/O, task, state-directory, and child-lifecycle boundaries on the target
+    host; the illustrative Linux profile is not a production measurement.
   - [ ] Success: a synthetic competing compiler load leaves reserved daemon
     capacity measurable; service restarts cannot create two owners.
 - [ ] 4.3.2. Expose operational metrics and bounded diagnostic traces.
@@ -896,8 +945,11 @@ operation. See RFC 0001 §§3, 6, and 9.
     transcript/credential payloads in logs.
 - [ ] 4.3.3. Implement bounded drain and recoverable shutdown.
   - [ ] Requires 4.3.1 and 4.2.2. See RFC 0001 §§5, 7, 9, 11, and 13.3.
-  - [ ] Stop admission, settle/preserve durable backlog, retire generations, and
-    track connection tasks, owner tasks, and child processes through join/reap.
+  - [ ] Distinguish daemon maintenance from run termination. Stop admission,
+    checkpoint/settle backlog, fence controller attachments, and detach runners
+    for supported maintenance. Explicit stop-all ends run service cgroups.
+  - [ ] Track daemon workers through join/reap, confirm run termination where
+    required, and retain independent disk reservations until actual reclaim.
   - [ ] Success: bounded shutdown records unresolved cleanup/delivery;
     requesting abortion never counts as termination. Lingering work blocks
     ownership transfer, deadlines cannot erase accepted obligations, and no
@@ -969,8 +1021,8 @@ controlled operation. See RFC 0001 §11.
   - [ ] Retain forward-created backlog safely, respect schema/version
     boundaries, and document restore rules for replica peer identities.
   - [ ] Success: rollback neither replays uncertain work nor discards unsent
-    changes; the release lists supported commands/profiles and makes no
-    zero-downtime or stdio-reattachment promise.
+    changes; the release lists supported commands/profiles and advertises
+    only the independently proven process, byte, and ACP recovery capabilities.
 
 ## 5. Deferred compatibility after the core host is trustworthy
 
@@ -1091,8 +1143,9 @@ requested single turn. See RFC 0001 §§5, 7, and 12.
 ### 5.6. Add managed upgrades after ownership transfer is proven
 
 Can a release switch retain the established one-owner and backlog contract?
-This step generalizes the manual rollout without promising live stdio
-reattachment. See RFC 0001 §§9, 11, and 12.
+This step generalizes the manual rollout while retaining negotiated runner
+versions and explicit protocol-restoration gates. See RFC 0001 §§9, 11, 12, and
+14, and the [Linux architecture][architecture] §7.
 
 - [ ] 5.6.1. Add managed upgrade and further lifecycle compatibility.
   - [ ] Requires 4.5.3. Native Windows updates also require 5.3.2.
@@ -1129,6 +1182,7 @@ initial spike nor core rollout depends on it. See RFC 0001 §§5, 9, and 13.1.
     selects a change only if recovery passes and the daemon workload materially
     benefits; qualification creates no automatic migration or performance claim.
 
+[architecture]: youxia-design.md
 [design]: rfcs/rfc-0001-native-rust-cli-and-daemon.md
 [lessons]: lessons-on-daemon-design-and-hot-path-preservation.md
 [roadmap-conventions]: https://github.com/leynos/df12-documentation-skills/blob/4a28c8953d3ccc2b5369b46cf042b53257d418de/skills/roadmap-doc/references/conventions.md

@@ -9,6 +9,7 @@ dated nightly pinned in `rust-toolchain.toml`. See
 ## Documentation
 
 - [Documentation contents](docs/contents.md)
+- [Linux component architecture](docs/youxia-design.md)
 - [Native CLI and daemon RFC](docs/rfcs/rfc-0001-native-rust-cli-and-daemon.md)
 - [Development roadmap](docs/roadmap.md)
 - [User guide](docs/users-guide.md)

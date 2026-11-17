@@ -101,6 +101,12 @@ compact and omits build output such as `target/`.
 - `docs/contents.md`: Indexes the documentation set and should be updated when
   documentation files are added, renamed, or removed.
 
+- `docs/youxia-design.md`: Explains the proposed Linux component architecture,
+  compatibility, systemd resource topology, and runner/protocol recovery.
+
+- `docs/adrs/`: Holds numbered architectural decision records. ADR 0001
+  proposes independent runner services and remains subject to qualification.
+
 - `docs/rfcs/`: Holds numbered proposals before architectural acceptance. RFC
   0001 defines the proposed native CLI and daemon; it does not describe
   capabilities implemented by the generated application.
@@ -110,7 +116,9 @@ compact and omits build output such as `target/`.
 
 - `docs/contracts/`: Holds proposed, separately parseable interface, storage,
   and configuration artefacts linked from the RFC. These are design inputs, not
-  installed migrations or executable daemon configuration.
+  installed migrations or executable daemon configuration. The architecture
+  also links the semantic runner transport contract and Linux resource profile
+  here.
 
 - `docs/execplans/`: Holds self-contained execution plans and their outcomes.
 

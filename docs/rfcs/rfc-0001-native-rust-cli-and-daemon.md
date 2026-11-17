@@ -35,6 +35,13 @@ ordinary rowid tables with explicit primary-key nullability. The product and
 provisional binary names use Youxia; existing Lody service, authentication,
 protocol, and compatibility identifiers retain their upstream names.
 
+Section 14 records the later
+[Linux component architecture](../youxia-design.md). It takes precedence for
+the Magitek/murder boundaries and Linux runner lifetime: `arun` owns agent
+pipes in an independent systemd service, while ACP semantics stay in `youxiad`.
+Process and byte survival do not by themselves establish protocol continuation
+after daemon replacement.
+
 Upstream and library findings describe the revisions inspected on 2026-11-14.
 They do not establish the currently deployed CLI/server profile or the latest
 available dependency versions. Implementation must requalify that profile. This
@@ -56,6 +63,7 @@ daemon, completed interoperability gate, or measured benchmark result.
 - [11. Rollout and practical CLI parity][section-11]
 - [12. Decisions, gates, and implementation hand-off][section-12]
 - [13. Amendments for Youxia implementation][section-13]
+- [14. Linux component architecture amendment][section-14]
 
 ## 1. Decision and scope
 
@@ -799,6 +807,10 @@ record the result.
 
 ### 7.5. Child process ownership
 
+The direct-ownership proposal below is retained as history. Section 14 replaces
+it for the Linux target with independent `arun` services and explicit transport
+and protocol recovery gates.
+
 Use one supervisor for spawn, environment, cwd, stdin/stdout/stderr,
 termination, and reaping. The SDK's built-in process adapter has useful Unix
 process-group cleanup but inherits the parent environment and has its own
@@ -1018,6 +1030,10 @@ counts, and actionable reason codes. “Connected” is not a sufficient health
 report.
 
 ### 9.4. Shutdown and ownership
+
+Section 14 separates daemon maintenance from explicit run termination for the
+Linux target. The ownership, durability, and uncertainty requirements below
+continue to apply to the owner that actually holds each resource.
 
 Exactly one owner controls each machine identity, replica writer identity,
 outbox, and agent process. Enforce local locks and generation fencing. Copied
@@ -1476,6 +1492,48 @@ unrelated startup error or passes because the expected value equals a default
 does not establish its intended contract. Record unexecuted proposals as
 planned checks, never completed evidence.
 
+## 14. Linux component architecture amendment
+
+The [Youxia architecture design](../youxia-design.md), dated 2026-11-17,
+defines the target component relationships.
+[ADR 0001](../adrs/adr-0001-linux-supervision-and-agent-transport.md) records
+the proposed supervision decision. This amendment changes the following
+specific assumptions while retaining the rest of this RFC's compatibility and
+reliability requirements.
+
+| Earlier assumption                                     | Proposed Linux target                                                                                                        |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `youxia-acp` owns SDK and child-process integration    | Daemon adapter consumes Magitek's bounded ACP contract and `arun` transport/lifecycle evidence                               |
+| Native Flock implementation remains unnamed            | `murder` implements Flock-compatible metadata in replica workers; reader/writer qualification still applies                  |
+| Daemon owns agent stdio and terminates it on restart   | Independent systemd services contain one runner and agent; `arun` retains pipes and bounded raw output during daemon absence |
+| One shutdown path drains/reaps all owned children      | Daemon maintenance detaches runners; explicit run/stop-all operations terminate service cgroups and confirm exit             |
+| Reattachment deferred as one indivisible feature       | Qualify process survival, contiguous byte recovery, and ACP state/effect restoration as separate capabilities                |
+| Linux service policy introduced during fleet packaging | Basic systemd/cgroup/runner enforcement precedes the first hosting slice; fleet work measures aggregate capacity             |
+
+_Table 19: Scoped amendments to component and lifecycle ownership._
+
+The [runner contract](../contracts/arun-transport.md) keeps all ACP parsing and
+policy out of `arun`. The [Linux profile](../contracts/linux-host.example.toml)
+adds illustrative service and resource controls. Neither artefact describes
+implemented software.
+
+Magitek's inspected design does not yet restore an ACP driver's pending state
+after daemon death. A surviving process or replayable stdout cannot close that
+gap. Until the host/library restoration gate passes, recovery fences mutations,
+reports `recovery_required` and uncertain outcomes, and applies a bounded
+inspection/termination policy. It must not initialize a fresh driver on an old
+conversation or resend an uncertain prompt.
+
+Keep SDK/transport qualification inside Magitek's dependency decision. Optional
+Wireframe adoption requires native frame/envelope flexibility, full duplex,
+expressive budgets, and the public-API ACP toy described in the architecture.
+Proposed dependency work is not a released capability.
+
+The newer Lody documentation is source evidence, not proof of the deployed
+service profile. Preserve the original baseline citations in this RFC; use the
+architecture's immutable evidence references and the deployment qualification
+gate before expanding compatibility claims.
+
 ## Sources
 
 The Lody links identify the inspected compatibility revision. Library links
@@ -1570,6 +1628,7 @@ requirements, not source measurements.
 [section-11]: #11-rollout-and-practical-cli-parity
 [section-12]: #12-decisions-gates-and-implementation-hand-off
 [section-13]: #13-amendments-for-youxia-implementation
+[section-14]: #14-linux-component-architecture-amendment
 [section-2]: #2-verified-baseline-and-compatibility-boundaries
 [section-3]: #3-components-and-runtime-isolation
 [section-4]: #4-ishiban-observation-and-replay

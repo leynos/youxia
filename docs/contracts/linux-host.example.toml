@@ -1,0 +1,114 @@
+# Proposed Linux extension to config.example.toml; no shipped parser exists.
+# Illustrative qualification profile: at least 16 logical CPUs and 64 GiB RAM.
+# These are unmeasured values, not a description of Rohga or production defaults.
+# All limits require effective-controller and ancestor checks before admission.
+schema_version = 1
+profile_id = "qualification-16cpu-64gib"
+
+[manager]
+mode = "user"
+require_cgroup_v2 = true
+require_lingering_for_unattended = true
+required_controllers = ["cpu", "memory", "pids"]
+require_qualified_io_control = false
+manage_cgroups_directly = false
+require_effective_limit_readback = true
+# A changed capacity envelope requires explicit profile recalculation.
+reject_unexpected_ancestor_limits = true
+
+[slices.installation]
+unit = "youxia.slice"
+cpu_quota_percent = 1400
+memory_high_bytes = 55_834_574_848 # 52 GiB
+memory_max_bytes = 60_129_542_144 # 56 GiB
+memory_swap_max_bytes = 2_147_483_648
+tasks_max = 12_288
+
+[slices.control]
+unit = "youxia-control.slice"
+cpu_weight = 400
+cpu_quota_percent = 200
+memory_high_bytes = 2_147_483_648
+memory_max_bytes = 3_221_225_472
+memory_swap_max_bytes = 0
+tasks_max = 512
+
+[slices.replicas]
+unit = "youxia-replicas.slice"
+cpu_weight = 100
+cpu_quota_percent = 200
+memory_high_bytes = 6_442_450_944
+memory_max_bytes = 8_589_934_592
+memory_swap_max_bytes = 536_870_912
+tasks_max = 1024
+
+[slices.agents]
+unit = "youxia-agents.slice"
+cpu_weight = 100
+cpu_quota_percent = 1200
+memory_high_bytes = 38_654_705_664 # 36 GiB
+memory_max_bytes = 42_949_672_960 # 40 GiB
+memory_swap_max_bytes = 1_073_741_824
+tasks_max = 8192
+
+[workspace_slice]
+# key is a local hex identifier mapped to the external workspace ID.
+unit_pattern = "youxia-agents-w{key}.slice"
+cpu_weight = 100
+cpu_quota_percent = 800
+memory_high_bytes = 17_179_869_184
+memory_max_bytes = 25_769_803_776
+tasks_max = 4096
+
+[runner]
+unit_pattern = "youxia-arun-{run_id}.service"
+type = "notify"
+notify_access = "main"
+exit_type = "main"
+kill_mode = "control-group"
+restart = "no"
+oom_policy = "kill"
+send_sigkill = true
+timeout_start_seconds = 30
+timeout_stop_seconds = 30
+umask_octal = "0077"
+runtime_directory_mode_octal = "0700"
+no_new_privileges = true
+cpu_weight = 100
+cpu_quota_percent = 400
+memory_high_bytes = 3_221_225_472
+memory_max_bytes = 4_294_967_296
+memory_swap_max_bytes = 134_217_728
+tasks_max = 512
+
+[admission]
+# Count starting, live, detached, recovering, and terminating runs.
+active_runs_host = 8
+active_runs_workspace = 4
+memory_reservation_bytes_per_run = 4_294_967_296
+stdout_spool_reservation_bytes_per_run = 67_108_864
+runner_spool_budget_bytes_host = 1_073_741_824
+# These credits are additional to the daemon journal/WAL and its reserve.
+runner_disposition_reserve_bytes = 1_048_576
+
+[transport]
+max_data_record_bytes = 65_536
+max_control_record_bytes = 16_384
+stdout_buffer_bytes = 262_144
+stdin_queue_bytes = 8_388_608
+stdin_queue_records = 128
+max_unretired_write_receipts = 256
+stderr_tail_bytes = 262_144
+stdout_commit_batch_bytes = 65_536
+stdout_commit_max_delay_ms = 10
+max_detached_seconds = 900
+max_stdout_stall_seconds = 120
+child_exit_drain_seconds = 10
+
+[recovery]
+launch_reconciliation_seconds = 60
+restore_protocol_state_before_ready = true
+allow_blind_prompt_replay = false
+on_unrestorable_protocol = "recovery_required_then_stop"
+# This is the recovery hold, separate from overall detached lifetime.
+recovery_required_hold_seconds = 120

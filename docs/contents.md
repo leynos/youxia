@@ -5,6 +5,11 @@ set.
 
 ## Architecture and delivery
 
+- [Youxia architecture design](youxia-design.md) defines the proposed Linux
+  components, compatibility boundaries, systemd supervision, resource policy,
+  and separate process, byte, and ACP recovery guarantees.
+- [ADR 0001: Linux supervision and agent transport](adrs/adr-0001-linux-supervision-and-agent-transport.md)
+  records the proposed independent runner services and daemon protocol boundary.
 - [RFC 0001: Native Rust CLI and daemon](rfcs/rfc-0001-native-rust-cli-and-daemon.md)
   preserves the initial architecture and proposes the Youxia reliability
   amendments, compatibility gates, and rollout boundaries.
@@ -17,6 +22,8 @@ set.
   RFC 0001.
 - [Design-documentation execution plan](execplans/add-cli-and-daemon-design-documents.md)
   records the scope, provenance, and verification of this documentation import.
+- [Linux architecture execution plan](execplans/add-linux-component-architecture.md)
+  records this design's scope, evidence, review, and validation.
 
 ## Project guides
 
