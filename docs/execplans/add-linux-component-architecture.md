@@ -71,7 +71,7 @@ Amend RFC 0001 explicitly and reconcile the affected existing roadmap tasks.
 - [x] Draft and validate contracts and diagrams.
 - [x] Draft the design and ADR; reconcile existing documents.
 - [x] Complete independent review, editing, and documentation validation.
-- [ ] Publish the documentation branch and pull request.
+- [x] Publish the documentation branch and pull request.
 
 ## Validation record
 
@@ -98,3 +98,9 @@ Completed on 2026-11-17:
 Runtime qualification scenarios in the design remain planned evidence, not
 executed tests of this documentation change. No service was installed, no agent
 ran, and no deployed compatibility or performance claim was made.
+
+## Delivery
+
+Published as [Youxia PR 11](https://github.com/leynos/youxia/pull/11) from
+`docs/linux-component-architecture`. The pull request remains open for review;
+this design does not constitute an accepted or implemented runtime.
