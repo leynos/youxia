@@ -20,6 +20,9 @@ set.
 - [Proposed implementation contracts](contracts/README.md) explains the
   observation schema, storage model, and configuration example that accompany
   RFC 0001.
+- [Runner transport contract](contracts/arun-transport.md) defines private
+  daemon and runner semantics for attachment, byte replay, write receipts, and
+  recovery.
 - [Design-documentation execution plan](execplans/add-cli-and-daemon-design-documents.md)
   records the scope, provenance, and verification of this documentation import.
 - [Linux architecture execution plan](execplans/add-linux-component-architecture.md)

@@ -72,6 +72,7 @@ Amend RFC 0001 explicitly and reconcile the affected existing roadmap tasks.
 - [x] Draft the design and ADR; reconcile existing documents.
 - [x] Complete independent review, editing, and documentation validation.
 - [x] Publish the documentation branch and pull request.
+- [x] Address review feedback and revalidate the documentation.
 
 ## Validation record
 
@@ -84,8 +85,11 @@ Completed on 2026-11-17:
   drafts also rendered before incorporation.
 - The exact Markdown formatting/check steps from `make fmt` and
   `make check-fmt` passed with mdtablefix 0.6.1. The full `make fmt` target
-  stopped at its missing-rustup prerequisite; the installed environment has no
-  Rust toolchain. No Rust source or build configuration changed.
+  initially stopped because the drafting shell did not expose `rustup` on
+  `PATH`; the Markdown step ran directly. A later managed-environment shell
+  resolved the pinned toolchain, and `make check-fmt`, `make lint`,
+  `make typecheck`, and `make test` all passed. No Rust source or build
+  configuration changed.
 - One-off checks verified 102 local link targets/anchors, numeric footnote
   references, TOML parsing, and memory, swap, task, raw-spool, transport,
   replica, and combined admission relationships.
@@ -94,6 +98,9 @@ Completed on 2026-11-17:
   completed-run recovery, retained disk accounting, logical-frame abandonment,
   terminal execution containment, and swap/admission composition. The amended
   contracts resolve each finding; focused rechecks reported none outstanding.
+- Review feedback identified the missing direct index link to the runner
+  transport contract. `docs/contents.md` now lists that contract alongside the
+  contracts index, and the Markdown gates were re-run after the edit.
 
 Runtime qualification scenarios in the design remain planned evidence, not
 executed tests of this documentation change. No service was installed, no agent
