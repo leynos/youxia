@@ -5,18 +5,24 @@ These artefacts accompany
 reviewable inputs for the native CLI and daemon implementation. The generated
 Youxia application does not load them yet.
 
+The [Linux architecture](../youxia-design.md) adds the private runner transport
+and an illustrative host resource profile. The runner contract defines
+semantics; selecting its exact wire encoding remains an implementation gate.
+
 | File                                                       | Purpose                                                                                 | Boundary                                                                        |
 | ---------------------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | [ishiban-session.schema.json](ishiban-session.schema.json) | Versioned session projection for Ishiban                                                | A proposed local read model, separate from upstream Lody's observation protocol |
 | [storage.sql](storage.sql)                                 | SQLite tables, constraints, immutable input/payload guards, and transaction obligations | A logical persistence contract, not an upstream database migration              |
 | [config.example.toml](config.example.toml)                 | Initial budgets and observation/hosting authority                                       | Proposed settings requiring implementation, validation, and measurement         |
+| [arun-transport.md](arun-transport.md)                     | Runner identity, attachment, raw replay, write receipts, and recovery                   | Private daemon/runner semantics; no ACP interpretation in `arun`                |
+| [linux-host.example.toml](linux-host.example.toml)         | Illustrative slices, service policy, admission, and raw transport budgets               | Linux extension to the base configuration; not measured production defaults     |
 
 _Table 1: Proposed contracts and the boundaries they define._
 
-The files originate in the 14 November 2026 Lody Rust design. The import keeps
-the observation schema's existing identifier, because it still describes
-Lody-compatible session evidence. Example local state paths and the credential
-namespace now use Youxia.
+The original three files originate in the 14 November 2026 Lody Rust design.
+The import keeps the observation schema's existing identifier, because it still
+describes Lody-compatible session evidence. Example local state paths and the
+credential namespace now use Youxia.
 
 ## Storage baseline and obligations
 
@@ -47,3 +53,10 @@ They do not establish native Flock/Loro interoperability, process supervision,
 crash recovery, filesystem durability, or the proposed latency targets. The
 roadmap assigns those guarantees to explicit implementation and end-to-end
 acceptance gates.
+
+The Linux profile must validate both hierarchy and reservation arithmetic. Its
+per-run memory and spool allocations fit the configured workspace/host
+admission counts. CPU quotas represent ceilings, not reservations; parent
+limits can bind first. The profile's eight-run limit is a small qualification
+example, distinct from the roadmap's later 60-agent fleet workload. Missing I/O
+enforcement remains visible when the optional I/O capability is unavailable.
