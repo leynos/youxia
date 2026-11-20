@@ -10,6 +10,9 @@ set.
   and separate process, byte, and ACP recovery guarantees.
 - [ADR 0001: Linux supervision and agent transport](adrs/adr-0001-linux-supervision-and-agent-transport.md)
   records the proposed independent runner services and daemon protocol boundary.
+- [ADR 0002: ACP host port and adapters](adrs/adr-0002-acp-host-port-and-adapters.md)
+  records the application-owned port, provisional SDK path, and later Magitek
+  replacement.
 - [RFC 0001: Native Rust CLI and daemon](rfcs/rfc-0001-native-rust-cli-and-daemon.md)
   preserves the initial architecture and proposes the Youxia reliability
   amendments, compatibility gates, and rollout boundaries.
@@ -23,10 +26,15 @@ set.
 - [Runner transport contract](contracts/arun-transport.md) defines private
   daemon and runner semantics for attachment, byte replay, write receipts, and
   recovery.
+- [ACP host port contract](contracts/acp-host-port.md) defines adapter
+  ownership, capability and evidence semantics, experimental profiles, and
+  shared witnesses.
 - [Design-documentation execution plan](execplans/add-cli-and-daemon-design-documents.md)
   records the scope, provenance, and verification of this documentation import.
 - [Linux architecture execution plan](execplans/add-linux-component-architecture.md)
   records this design's scope, evidence, review, and validation.
+- [ACP host port execution plan](execplans/define-acp-host-port-and-runner-spike.md)
+  records the paired design amendment and early local runner/SDK spike path.
 
 ## Project guides
 

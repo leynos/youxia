@@ -3,20 +3,23 @@
 ## Status and scope
 
 - **Status:** Proposed target architecture; no implementation claim.
-- **Date:** 2026-11-17.
+- **Date:** 2026-11-20.
 - **Audience:** implementers, architecture reviewers, and Linux operators.
 - **Scope:** `youxia`, `youxiad`, `magitek`, `arun`, and `murder` on a Linux
   host with systemd and unified version-2 control groups (cgroup v2).
-- **Decision record:**
-  [ADR 0001: Linux supervision and durable agent transport][adr].
+- **Decision records:**
+  [ADR 0001: Linux supervision and durable agent transport][adr] and
+  [ADR 0002: ACP host port and adapters][acp-adr].
 - **Relationship to earlier design:** [RFC 0001][rfc] remains the detailed
   compatibility, persistence, and observation specification. Its §14 records
   this proposal's changes to component names, ACP ownership, process lifetime,
   and Linux deployment. Unchanged requirements, including §13's reliability
-  amendments, continue to apply.
-- **Normative companion:** [arun transport contract][arun-contract] defines the
-  private transport semantics. [Linux resource profile][linux-profile] contains
-  illustrative qualification values, not an installed configuration format.
+  amendments, continue to apply. Its §15 records the application-owned ACP port
+  and early SDK experiment.
+- **Normative companions:** [ACP host port][acp-port] defines the engine adapter
+  boundary; [arun transport contract][arun-contract] defines private transport
+  semantics. [Linux resource profile][linux-profile] contains illustrative
+  qualification values, not an installed configuration format.
 
 ## Contents
 
@@ -51,9 +54,10 @@ The design assigns five clear responsibilities:
 2. `youxiad` owns application policy, command acceptance, Agent Client Protocol
    (ACP) host semantics, permissions, persistent state, cloud compatibility,
    and recovery decisions.
-3. `magitek` runs inside `youxiad` as the bounded ACP library. It owns protocol
-   framing, negotiation, correlation, dispatch, and typed events under the
-   daemon's runtime and resource policy.
+3. A selected ACP adapter runs inside `youxiad` behind its `AcpHostPort`.
+   The provisional `acpsdk` adapter enables a local experiment; the later
+   `magitek` adapter supplies the qualified bounded protocol machinery. Domain
+   owners consume Youxia's contract and explicit capability evidence.
 4. `arun` lives beside each agent in an independent systemd service. It owns
    pipes, raw transport continuity, bounded stdout retention, stderr draining,
    and child exit evidence. It does not interpret ACP.
@@ -75,10 +79,11 @@ automatic consequence of a surviving socket.
 
 ### 1.1. Goals and boundaries
 
-The first delivery sequence remains read-only Ishiban observation, one hosted
-ACP agent, and then a qualified fleet. Linux supervision enters the first
-hosting slice rather than appearing only during fleet packaging. Native
-metadata reads and writes remain separate compatibility gates.
+The qualified delivery sequence remains read-only Ishiban observation, one
+hosted ACP agent, and then a fleet. A separate local SDK/runner experiment in
+roadmap step 1.5 can proceed alongside observation and dependency work. Linux
+supervision enters that experiment and the first hosting slice. Native metadata
+reads and writes remain separate compatibility gates.
 
 The initial support profile covers an authorized, unencrypted workspace using
 Loro history and a configured ACP executable. If the actual workspace needs
@@ -112,19 +117,20 @@ The Youxia checkout at `f6f4b46aac1f758b47036efe0af5e50e0362c866` contains the
 generated application stub, RFC 0001, and its roadmap. It does not contain the
 architecture described here as working software.[^2]
 
-The useful `leynos/lody-docs` material currently lives in open PR 1, inspected
-at `da27f215df33d6ee5938461d6c060acb959dd1fb`. Its architecture pins upstream
-Lody `61bd9701a5ed6899a9f42787df682acfc3fd7d4b`. RFC 0001 retains its earlier
+The initial architecture inspected `leynos/lody-docs` PR 1 at
+`da27f215df33d6ee5938461d6c060acb959dd1fb`. Its architecture pins upstream Lody
+`61bd9701a5ed6899a9f42787df682acfc3fd7d4b`. RFC 0001 retains its earlier
 `d3179e1f...` baseline. The newer documentation informs this design without
 silently redefining a deployed compatibility profile. Cloud backend internals
 remain unavailable; source-level client expectations need live
 qualification.[^1]
 
-Magitek's inspected design is draft PR 1 at
-`bfef49cbf10912ccf8ed246d4760bbb21f96c01b`; its main branch is a README. Its
-named interfaces are proposed contracts. Wireframe's inspected native-protocol
-RFCs also remain proposals. Neither dependency is treated as completed
-capability merely because it has a design document.[^3][^4]
+The ACP port amendment reviews Magitek at
+`2296f8ac5d550a2f5706952fb6a641179605dfa5`. Its design and roadmap now include
+the selected Wireframe accounting/framing dependency and its qualification
+gates; its named runtime interfaces remain proposed. The earlier Wireframe
+inspection remains historical evidence. A design or dependency decision does
+not establish an implemented capability.[^3][^4]
 
 ### 2.2. Preserve the external boundary
 
@@ -142,7 +148,7 @@ contracts while changing those internal process relationships.[^1]
 | Turn and cancellation discovery | Durable input/activation/stop routes plus RPC accelerators; common identities and authorization                   | Daemon command owner                                |
 | Machine RPC                     | Strict envelopes, correlated progress/final replies, method shapes, capability negotiation, and retained outcomes | Daemon RPC adapter                                  |
 | Presence                        | Correct record encoding, instance identity, and renewal/expiry behaviour                                          | Independent daemon liveness owner                   |
-| ACP                             | Qualified protocol version, JSON-RPC IDs, bidirectional requests, streaming events, permissions, and cancellation | Magitek plus daemon host services                   |
+| ACP                             | Qualified protocol version, JSON-RPC IDs, bidirectional requests, streaming events, permissions, and cancellation | Selected ACP adapter plus daemon host services      |
 | Native local API                | New versioned control, observation, receipts, and diagnostics                                                     | `youxia` and `youxiad`                              |
 | Existing local Lody clients     | Protocol 7, probe/control or terminal APIs only where selected and qualified                                      | Separate optional compatibility adapters            |
 
@@ -164,8 +170,8 @@ not those protocols.[^5][^9]
 ## 3. Component topology and ownership
 
 The following diagram distinguishes process supervision from protocol traffic.
-Magitek remains inside the daemon; each runner and agent belong to a separate
-service. Replica processes isolate synchronous CRDT work.
+The selected ACP adapter remains inside the daemon; each runner and agent
+belong to a separate service. Replica processes isolate synchronous CRDT work.
 
 ```mermaid
 flowchart TD
@@ -173,7 +179,7 @@ flowchart TD
     CLOUD["Existing Lody service and clients"]
     SYSTEMD["systemd user manager"]
     D["youxiad: policy, storage, and cloud adapters"]
-    M["magitek library inside youxiad"]
+    M["Selected ACP adapter: acpsdk or magitek"]
     R["Replica processes: murder and native Loro"]
     A["arun service for one execution"]
     P["ACP agent and descendants"]
@@ -184,7 +190,7 @@ flowchart TD
     SYSTEMD -.->|"supervises"| D
     SYSTEMD -.->|"supervises"| R
     SYSTEMD -.->|"supervises independently"| A
-    D <-->|"typed ACP events and commands"| M
+    D <-->|"AcpHostPort: typed events and commands"| M
     D <-->|"bounded replica jobs"| R
     D <--> DB
     M <-->|"byte adapter over private socket"| A
@@ -257,7 +263,28 @@ Moving a job to another thread does not remove a held lock, database
 transaction, or exhausted credit. RFC 0001 §13 and the
 [Comenq lessons][lessons] remain requirements for all of these owners.
 
-### 3.3. `magitek`: protocol machinery inside the host
+### 3.3. ACP host port and protocol adapters
+
+Youxia owns `AcpHostPort` and its application-facing command, event, outcome,
+and capability vocabulary. The [port contract][acp-port] follows Magitek's
+planned semantics, including features that the provisional adapter cannot yet
+supply. The daemon composition root selects `acpsdk` for the local experiment or
+`magitek` after qualification; session and operation owners depend only on the
+port. Concrete SDK/Magitek types stay inside their adapters.
+
+Support evidence distinguishes adapter implementation, peer negotiation,
+installed host services, policy, current readiness, and qualification.
+Consumers reject unavailable required capabilities and handle optional ones
+explicitly. Pre-publication rejection, uncertain submission, correlated result,
+and durable host commit keep their separate meanings. Every profile preserves
+those invariants; experimental status cannot justify false completion or
+approval.
+
+Bind the adapter and support snapshot to the protocol generation. Recheck
+readiness and authority at admission; a cached capability query grants neither.
+Adapter replacement applies to new runs or genuinely fresh connections after
+the shared corpus passes. It does not hot-swap uncertain work or reconstruct a
+lost protocol driver. ADR 0002 records the decision and delivery trade-off.
 
 Magitek accepts host-owned asynchronous byte streams and independent execution
 lifecycle observations. The proposed `ConnectionDriver`, client/session handles,
@@ -265,10 +292,10 @@ lifecycle observations. The proposed `ConnectionDriver`, client/session handles,
 boundary. They do not supply daemon persistence, permission policy, process
 supervision, or a private Tokio runtime.[^3]
 
-Youxia's adapter unwraps `arun` records into unchanged agent bytes and maps
-runner lifecycle evidence separately. It does not enable a second Magitek
-process-spawn adapter for the same execution. The daemon remains the ACP client
-even though systemd starts the runner that starts the agent.
+Youxia's runner byte adapter unwraps `arun` records into unchanged agent bytes
+and maps runner lifecycle evidence separately for either ACP adapter. Neither
+engine starts a second process for that execution. The daemon remains the ACP
+client even though systemd starts the runner that starts the agent.
 
 Magitek owns frame validation, correlation, request-ID rules, reverse requests,
 and bounded ordered events. The daemon owns filesystem/terminal authorization,
@@ -284,11 +311,16 @@ and output ownership, stop propagation from the owning run, and recovery tests.
 That adapter can use internal worker modes; it must not make `arun` interpret
 ACP. Agent-created ordinary subprocesses already inherit the agent's run group.
 
-An event lease retains its charge after dequeueing and after connection close
-until the last owner releases it. The daemon reserves destination capacity
-before transferring data to its journal. Delivery, protocol completion, durable
-host commit, and upstream publication use separate watermarks. A final prompt
-projection cannot overtake its preceding durable output.[^3]
+In the qualified profile, an event lease retains its charge after dequeueing
+and after connection close until the last owner releases it. The daemon
+reserves destination capacity before transferring data to its journal.
+Delivery, protocol completion, durable host commit, and upstream publication
+use separate watermarks. A final prompt projection cannot overtake its
+preceding durable output.[^3]
+
+The SDK experiment records unqualified internal retention explicitly. Bounded
+front queues and a cgroup ceiling cannot establish Magitek's full admission and
+lease contract. Roadmap 1.3.1 and 3.2.2 retain that qualification gate.
 
 ### 3.4. `arun`: a transport keeper with one execution lifetime
 
@@ -452,13 +484,13 @@ Launch is a sequence of recorded effects, not a distributed transaction:
    signals readiness only after pipe ownership and launch evidence exist.
 5. The daemon verifies boot/run/invocation identity, attaches with a fenced
    controller epoch, and records transport readiness.
-6. For a fresh ACP conversation, Magitek initializes and negotiates
+6. For a fresh ACP conversation, the selected adapter initializes and negotiates
    capabilities, then creates or loads the session as supported. Existing
    conversations use the recovery path in §7; they must not receive a fresh
    initialization.
 7. The command owner journals exact prompt intent and outbound bytes before
    transport submission. Runner receipts establish pipe progress only.
-8. Incoming raw bytes enter the durable inbox. Magitek produces admitted
+8. Incoming raw bytes enter the durable inbox. The ACP adapter produces admitted
    events; daemon transactions record domain outcomes and queue compatible
    murder/Loro mutations. Replica output enters the durable upstream outbox.
 
@@ -475,7 +507,7 @@ Startup reconstructs those reservations before new admission.
 ## 6. Transport, buffering, and acknowledgement boundaries
 
 The runner transport carries small bounded outer records containing opaque byte
-intervals. Magitek sees the reconstructed ACP JSONL stream, without private
+intervals. The ACP adapter sees the reconstructed JSONL stream, without private
 envelope bytes or newline changes. A large ACP record may span many outer
 records; the transport segment cap and ACP frame cap are distinct.
 
@@ -548,7 +580,7 @@ flowchart TD
 
 _Figure 2: Surviving processes require evidence before protocol continuation._
 
-If the original Magitek driver survives a socket loss, the byte adapter may
+If the original ACP driver survives a socket loss, a qualified byte adapter may
 reattach beneath that driver after reconciling offsets and pending writes. Its
 decoder, request map, and budget ledger remain alive. This is different from
 giving a new driver a replacement stream.
@@ -715,11 +747,12 @@ indices, database write-ahead log (WAL), checkpoint staging, and allocator
 margin. Credits remain attached through handoffs; copies consume capacity while
 both copies exist.
 
-Magitek must enforce bounds before unrestricted decoding or task creation.
-Closing a connection must not create a fresh global ledger while old-generation
-leases remain retained. The runner separately enforces its assigned raw spool
-quota while the daemon is down. One paused stdin writer must not stop stderr
-draining or control inspection.
+The qualified ACP adapter must enforce bounds before unrestricted decoding or
+task creation, including Magitek's internal ownership paths. Closing a
+connection must not create a fresh global ledger while old-generation leases
+remain retained. The runner separately enforces its assigned raw spool quota
+while the daemon is down. One paused stdin writer must not stop stderr draining
+or control inspection.
 
 Reserve completion, cancellation, and failure capacity when accepting work.
 Ordinary admission cannot consume the storage space or credits needed to finish
@@ -813,22 +846,17 @@ owners.
 
 _Table 10: Alternatives and the reasons for the selected boundaries._
 
-Magitek's dependency selection remains its own qualification gate. Its proposal
-first evaluates the official ACP SDK and adjacent reuse before authorizing a
-replacement engine. Youxia consumes the bounded Magitek contract; it does not
-silently choose a different dispatcher underneath that project.[^3]
+Magitek owns its protocol-engine selection and Wireframe qualification. Its
+current design requires Wireframe accounting/framing primitives and qualifies
+duplex-driver reuse separately. The public-API ACP probe and retained-credit
+witnesses remain evidence gates.[^3] The earlier Wireframe source inspection
+does not establish those contracts.[^4]
 
-Wireframe is a candidate substrate after its native framing, full-duplex
-connection driver, and budget contracts pass. Its current generic stream trait
-does not make its length-delimited client runtime an ACP JSONL implementation.
-Do not force ACP IDs or frames through the existing envelope shape. Require a
-public-API ACP toy exercising reverse requests during a prompt, ordered output,
-permissions, cancellation, structural limits, partial writes, slow consumers,
-retained events across closure, and all supported transport types.[^4]
-
-The earlier requested Wireframe amendments and ACP toy remain dependency work
-until a concrete implementation and evidence exist. They are not a reason to
-make `arun` parse ACP or to erase Magitek's credit/ownership requirements.
+Youxia's `acpsdk` experiment is an alternative adapter behind its own port, not
+a substitute implementation within Magitek. It can expose runner and host
+integration problems before those dependencies arrive. Its explicit subset and
+unqualified guarantees cannot satisfy the full hosting gate. Both adapters
+reuse the same runner boundary and shared semantic corpus.
 
 ## 12. Delivery, verification, and open gates
 
@@ -840,14 +868,18 @@ Keep [roadmap][roadmap] task identities stable and amend their contracts:
    native Loro, local handshake, and Magitek's actual accounting boundaries.
 2. The read-only observer remains independent of agent supervision and protocol
    restoration. Its successful gate must not imply hosting readiness.
-3. Hosting tasks implement the systemd adapter and arun transport before the
-   first real agent. First prove process/byte survival with truthful recovery
-   status; qualify ACP restoration separately before promising live
+3. Roadmap step 1.5 spikes one local agent through the port, SDK adapter, and
+   independent runner. It needs no Murder, cloud profile, observation
+   completion, or Magitek runtime. It records unsupported capabilities and
+   unqualified retention, with no cloud publication or production readiness.
+4. Hosting tasks integrate the systemd adapter and arun transport under the
+   full one-agent gate. First prove process/byte survival with truthful
+   recovery status; qualify ACP restoration separately before promising live
    continuation.
-4. Fleet tasks qualify aggregate admission, overload, fault recovery, diagnosis,
+5. Fleet tasks qualify aggregate admission, overload, fault recovery, diagnosis,
    and the existing 60-agent/72-hour acceptance workload on recorded hardware.
    The smaller example resource profile is not that fleet benchmark.
-5. Production cutover drains the selected Lody owner and confirms termination
+6. Production cutover drains the selected Lody owner and confirms termination
    before transferring machine/replica identity through an explicit migration.
    Keep databases separate. Rehearse rollback without replaying uncertain work.
 
@@ -859,20 +891,21 @@ lifetime boundary.
 
 ### 12.2. Discriminating acceptance evidence
 
-| Gate                         | Evidence that must reject the plausible broken design                                                                                                   |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Native compatibility         | Differential murder snapshots/deltas/tombstones and Loro containers match pinned peers; unsupported inputs fail explicitly                              |
-| Independent service lifetime | Restart only `youxiad`; same arun/agent PIDs and run identity remain, sockets remain reachable, and no duplicate agent starts                           |
-| Runner shared fate           | Kill arun or trigger its cgroup OOM; prove descendants terminate or remain explicitly unresolved, without auto-reexecution                              |
-| Launch uncertainty           | Lose the D-Bus reply after service creation; recover the original unit/run rather than launching another                                                |
-| Byte continuity              | Split a JSONL frame across daemon/socket loss; reconstruct exact bytes, cursor, and decoder state or report a gap                                       |
-| Semantic recovery            | Crash across prompt write, permission response, and host file/terminal effect; prove restored outcomes or explicit uncertainty without repeated effects |
-| Saturation                   | Fill stdout, events, writes, and ordinary storage admission independently; preserve required progress or terminate with the declared disposition        |
-| Controller fencing           | Deliver stale writes/permissions after reattachment or replacement; prove they cannot mutate the new owner                                              |
-| Genuine resource enforcement | Exercise effective host/workspace/run limits and ancestors; record throttling/OOM and independent control progress                                      |
-| Presence and replication     | Block a bulk import/storage consumer while a real peer receives heartbeat progress; preserve pending input and retry floors                             |
-| Shutdown and reboot          | Confirm join/reap/cgroup evidence before reuse; classify vanished units and interrupted runs without inventing success                                  |
-| Capability honesty           | Unimplemented local parity, Magitek restoration, encrypted history, or RPC methods remain unadvertised and explicitly diagnosable                       |
+| Gate                         | Evidence that must reject the plausible broken design                                                                                                                       |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Native compatibility         | Differential murder snapshots/deltas/tombstones and Loro containers match pinned peers; unsupported inputs fail explicitly                                                  |
+| Independent service lifetime | Restart only `youxiad`; same arun/agent PIDs and run identity remain, sockets remain reachable, and no duplicate agent starts                                               |
+| Runner shared fate           | Kill arun or trigger its cgroup OOM; prove descendants terminate or remain explicitly unresolved, without auto-reexecution                                                  |
+| Launch uncertainty           | Lose the D-Bus reply after service creation; recover the original unit/run rather than launching another                                                                    |
+| Byte continuity              | Split a JSONL frame across daemon/socket loss; reconstruct exact bytes, cursor, and decoder state or report a gap                                                           |
+| Semantic recovery            | Crash across prompt write, permission response, and host file/terminal effect; prove restored outcomes or explicit uncertainty without repeated effects                     |
+| Saturation                   | Fill stdout, events, writes, and ordinary storage admission independently; preserve required progress or terminate with the declared disposition                            |
+| Controller fencing           | Deliver stale writes/permissions after reattachment or replacement; prove they cannot mutate the new owner                                                                  |
+| Genuine resource enforcement | Exercise effective host/workspace/run limits and ancestors; record throttling/OOM and independent control progress                                                          |
+| Presence and replication     | Block a bulk import/storage consumer while a real peer receives heartbeat progress; preserve pending input and retry floors                                                 |
+| Shutdown and reboot          | Confirm join/reap/cgroup evidence before reuse; classify vanished units and interrupted runs without inventing success                                                      |
+| Capability honesty           | Unavailable adapter/peer/service features, policy denial, transient readiness, and unqualified guarantees remain distinct; required failures never become skipped successes |
+| Adapter replacement          | The same domain workflow passes the SDK/Magitek port corpus on fresh runs; old-generation callbacks and uncertain live work cannot cross the change                         |
 
 _Table 11: Required implementation witnesses, not completed test results._
 
@@ -898,12 +931,12 @@ _Table 12: Open qualification work with explicit ownership._
 ## References
 
 [^1]: [Lody architecture, inspected documentation revision](https://github.com/leynos/lody-docs/blob/da27f215df33d6ee5938461d6c060acb959dd1fb/docs/architecture/README.md),
-    from [open documentation PR 1](https://github.com/leynos/lody-docs/pull/1).
+    from [documentation PR 1](https://github.com/leynos/lody-docs/pull/1).
 
 [^2]: [Youxia at the inspected base revision](https://github.com/leynos/youxia/tree/f6f4b46aac1f758b47036efe0af5e50e0362c866).
 
-[^3]: [Magitek proposed design](https://github.com/leynos/magitek/blob/bfef49cbf10912ccf8ed246d4760bbb21f96c01b/docs/magitek-design.md),
-    especially transport replacement and host ownership; [draft PR 1](https://github.com/leynos/magitek/pull/1).
+[^3]: [Magitek proposed design](https://github.com/leynos/magitek/blob/2296f8ac5d550a2f5706952fb6a641179605dfa5/docs/magitek-design.md),
+    especially §§2.3 and 7–10; [qualification roadmap](https://github.com/leynos/magitek/blob/2296f8ac5d550a2f5706952fb6a641179605dfa5/docs/roadmap.md).
 
 [^4]: [Wireframe native protocol RFCs at the inspected revision](https://github.com/leynos/wireframe/tree/6ad888595cf912e8424ea6e7573af7f76b096282/docs/rfcs),
     [roadmap](https://github.com/leynos/wireframe/blob/6ad888595cf912e8424ea6e7573af7f76b096282/docs/roadmap.md),
@@ -946,6 +979,8 @@ _Table 12: Open qualification work with explicit ownership._
 [^20]: [Lody presence protocol](https://github.com/leynos/lody-docs/blob/da27f215df33d6ee5938461d6c060acb959dd1fb/docs/loro-documents/presence.md).
 
 [adr]: adrs/adr-0001-linux-supervision-and-agent-transport.md
+[acp-adr]: adrs/adr-0002-acp-host-port-and-adapters.md
+[acp-port]: contracts/acp-host-port.md
 [arun-contract]: contracts/arun-transport.md
 [lessons]: lessons-on-daemon-design-and-hot-path-preservation.md
 [linux-profile]: contracts/linux-host.example.toml
