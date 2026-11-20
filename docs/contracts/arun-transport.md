@@ -2,7 +2,7 @@
 
 ## Status and ownership
 
-Proposed, 2026-11-17. This contract accompanies the
+Proposed, 2026-11-20. This contract accompanies the
 [Youxia architecture](../youxia-design.md). It defines semantic requirements
 for the private daemon-to-runner protocol; it is not a released wire format.
 The implementation gate must select and publish its exact encoding and
@@ -10,8 +10,10 @@ independent test vectors before peers depend on it.
 
 `arun` owns one agent process, its pipes, a bounded raw stdout spool, and a
 bounded diagnostic stderr tail. `youxiad` owns Agent Client Protocol (ACP)
-interpretation through Magitek, authorization, sessions, turns, and durable
-domain state. Systemd owns service termination and descendant containment.
+interpretation through its selected [ACP host port adapter](acp-host-port.md),
+authorization, sessions, turns, and durable domain state. Systemd owns service
+termination and descendant containment. The same raw transport serves the
+experimental SDK adapter and the later Magitek adapter.
 
 No operation below requires `arun` to parse JSON, recognize an ACP method,
 identify a session, decide a permission, or declare a turn complete. Byte
@@ -200,7 +202,7 @@ termination remains the fallback when protocol progress is impossible.
 
 Stderr uses a separate bounded tail and explicit dropped-byte counters. It can
 discard diagnostic bytes under its declared policy. It must not be mixed into
-protocol stdout, fed to Magitek, or copied unboundedly into journald.
+protocol stdout, fed to an ACP adapter, or copied unboundedly into journald.
 
 Global spool admission reserves a per-run allocation before launch. `arun`
 enforces its own allocation while the daemon is absent. Starting, live,
@@ -214,13 +216,13 @@ systemd/journal evidence without claiming durability.
 
 ## 7. Recovery capability gate
 
-A surviving Magitek driver can tolerate a socket interruption through an
+A surviving ACP driver can tolerate a socket interruption through a qualified
 adapter that preserves contiguous bytes, pending writes, decoder state, and
 protocol identity. It must also classify read/write deadlines and pause policy
 explicitly; a transport timeout does not become an unlimited reconnect loop.
 
 A restarted daemon has lost that driver. Safe continuation additionally needs a
-versioned host/Magitek restoration contract containing:
+versioned host/engine restoration contract containing:
 
 - Negotiated ACP version, capabilities, session routes, and protocol identity.
 - Request-ID allocation and every unresolved outbound request.
@@ -231,13 +233,19 @@ versioned host/Magitek restoration contract containing:
 - Replay rules that reconstruct state without repeating sends, approvals,
   filesystem writes, terminal creation, or other completed effects.
 
-The current Magitek proposal does not supply this contract. Implementation must
-qualify it before advertising transparent turn continuation after daemon
-failure. If restoration cannot prove continuity, the daemon enters
-`recovery_required`, fences new mutations, and preserves uncertain outcomes. It
-can keep the process temporarily for inspection within its run budget or
-terminate it under explicit policy. A new initialized process may use a
-capability-qualified session load; it must not blindly resend the old prompt.
+Neither the provisional SDK profile nor the current Magitek proposal supplies
+this contract. Implementation must qualify it before advertising transparent
+turn continuation after daemon failure. If restoration cannot prove continuity,
+the daemon enters `recovery_required`, fences new mutations, and preserves
+uncertain outcomes. It can keep the process temporarily for inspection within
+its run budget or terminate it under explicit policy. A new initialized process
+may use a capability-qualified session load; it must not blindly resend the old
+prompt.
+
+The [ACP host port](acp-host-port.md#5-adapter-replacement-and-recovery) binds
+adapter identity and qualification to the protocol generation. Changing the
+engine for a new run leaves this wire contract unchanged. It does not authorize
+a different driver to initialize on surviving pipes or replay old effects.
 
 ## 8. Required witnesses
 

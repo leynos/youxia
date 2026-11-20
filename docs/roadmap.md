@@ -5,12 +5,14 @@ Client Protocol (ACP) agents with native Loro synchronization; and preserve
 liveness and durable progress under load. This roadmap turns [RFC 0001][design]
 into the first observation spike, the second hosting spike, and a controlled
 fleet rollout. The [Linux architecture][architecture] and RFC §14 refine the
-component and process boundaries: Magitek supplies bounded ACP in `youxiad`,
-`arun` retains agent transport, and murder implements Flock metadata. The
-implementation uses async Rust, ortho-config, native Loro, oauth2, and restson;
-Magitek owns qualification of its ACP implementation dependency. The source
-baseline remains Lody commit d3179e1f7538b61d0a6acc6be0a324281be4e3c0; the
-actual deployment profile is an early compatibility gate.
+component and process boundaries: `youxiad` owns an ACP host port with an early
+`acpsdk` adapter and a later qualified Magitek adapter, `arun` retains agent
+transport, and murder implements Flock metadata. The implementation uses async
+Rust, ortho-config, native Loro, oauth2, and restson; Magitek owns
+qualification of its ACP implementation dependency. Step 1.5 adds a local
+runner/SDK experiment alongside the observation path. The source baseline
+remains Lody commit d3179e1f7538b61d0a6acc6be0a324281be4e3c0; the actual
+deployment profile is an early compatibility gate.
 
 The structure follows the [roadmap skill][roadmap-skill] and
 [conventions][roadmap-conventions] in leynos/df12-documentation-skills at
@@ -31,12 +33,14 @@ conditional promotion rules in phase 5. The RFC preserves the original plan and
 records the Youxia amendments in §13. The [Comenq lessons][lessons] supply the
 implementation evidence behind those amendments. SQLite remains the initial
 storage baseline; optional Turso qualification in step 5.7 does not block
-either spike.
+either qualified slice or the local experiment.
 
 Linux service/resource enforcement now enters the first hosting slice.
 Transparent turn continuation after daemon death requires the separate
 Magitek/host restoration gate; raw process and byte survival cannot satisfy it.
-All corresponding implementation tasks remain unchecked.
+All corresponding implementation tasks remain unchecked. The local experiment
+has its own acceptance evidence and cannot pass qualified hosting gates merely
+by completing a prompt.
 
 ## 1. Foundational contracts and isolation boundaries
 
@@ -158,8 +162,9 @@ boundary that does not actually exist. See RFC 0001 §§7, 8, and 12.
   - [ ] Trace frame allocation, decode, request, notification, response,
     callback, and task ownership through Magitek's selected implementation;
     instrument a slow-consumer probe and retained leases across closure.
-  - [ ] See the [Linux architecture][architecture] §§3.3, 9, and 11. Conditional
-    Wireframe reuse requires the public-API ACP toy and the full budget contract.
+  - [ ] See the [Linux architecture][architecture] §§3.3, 9, and 11. Magitek's
+    selected Wireframe accounting/framing and any optional driver reuse require
+    the public-API ACP toy and the full budget contract.
   - [ ] Success: the report identifies every retained buffer and permit
     lifetime, records any unbounded path, and specifies the minimal patch
     contract. Hosting still requires the implemented and measured boundary in
@@ -198,8 +203,9 @@ boundary that does not actually exist. See RFC 0001 §§7, 8, and 12.
     gate has an owner and pass/fail evidence; queries cannot hide dispatch.
 
 Task 1.3.1 can proceed alongside observation work. Task 3.2.2 must implement
-and measure the resulting queue and credit contract before hosting; neither
-task blocks phase 2's read-only data path.
+and measure the resulting queue and credit contract before qualified hosting;
+neither task blocks phase 2's read-only data path or step 1.5's explicitly
+experimental local profile.
 
 ### 1.4. Establish a bounded, versioned local control connection
 
@@ -224,6 +230,83 @@ provides minimal diagnostics before the first observation feed. See RFC 0001
   - [ ] Success: a newly installed CLI connected to an older running daemon
     identifies the actual peer and unsupported capability. Build versions aid
     diagnosis; negotiated compatibility determines whether work can proceed.
+
+### 1.5. Spike the local agent loop through an ACP host port
+
+Can one local agent run through `youxiad`, a replaceable ACP adapter, and
+independent `arun` transport without coupling domain policy to that adapter?
+This experiment supplies integration evidence before Magitek is available. See
+the [ACP host port](contracts/acp-host-port.md) and
+[ADR 0002](adrs/adr-0002-acp-host-port-and-adapters.md).
+
+Start from the existing tooling scaffold. This workstream does not require
+tasks 1.1.1–1.1.4, the full 1.2 execution-domain implementation, phase 2,
+Magitek runtime delivery, or Wireframe qualification. It uses disposable local
+state, one configured executable, and no Lody publication. Implement its narrow
+owners and durable records directly; later tasks integrate and qualify them
+under the full host contracts. Every retained obligation still needs an owner.
+
+- [ ] 1.5.1. Define the domain-owned port and a fault-capable fake adapter.
+
+  - [ ] See the [ACP host port](contracts/acp-host-port.md) §§1–3 and 6.
+  - [ ] Define typed operations, generation-bound events/evidence, support
+    snapshots, readiness, unavailable reasons, and experimental/qualified
+    profiles without SDK or Magitek types in domain policy.
+  - [ ] Success: one domain workflow handles an optional-feature absence,
+    required-feature rejection, policy revocation, and uncertain submission;
+    dependency checks reject backend imports into domain modules.
+
+- [ ] 1.5.2. Build a raw `arun` prototype and the shared daemon byte adapter.
+
+  - [ ] Requires 1.5.1. See [runner transport](contracts/arun-transport.md)
+    §§1–7 and the [Linux architecture][architecture] §§4–7.
+  - [ ] Select a versioned bounded encoding; implement one independent systemd
+    service, immutable launch identity, stdout spool, durable daemon inbox,
+    stdin receipts, attachment fencing, and finite stop/detachment policy.
+  - [ ] Success: a scripted byte peer survives daemon detachment with the same
+    run/PIDs; replay preserves the committed prefix, lost receipts cause no
+    duplicate writes, saturation preserves stdout, and runner death ends the
+    execution without automatic replacement. Test real pipes and sockets.
+
+- [ ] 1.5.3. Implement the provisional `acpsdk` adapter against the port.
+
+  - [ ] Requires 1.5.1; can proceed alongside 1.5.2. See the
+    [ACP host port](contracts/acp-host-port.md) §§2–4 and 6.
+  - [ ] Pin the official Rust SDK revision and expose its measured subset;
+    consume host-supplied byte streams rather than its process launcher.
+    Translate ordered events, permission decisions, and submission evidence;
+    record unqualified internal retention explicitly.
+  - [ ] Success: scripted ACP peers initialize, create a session, stream a
+    prompt, and close through the same port corpus as the fake. Unsupported
+    optional features report typed reasons; required failures cannot pass as
+    skipped tests or complete output.
+
+- [ ] 1.5.4. Host one local agent through experimental `youxiad` and `arun`.
+
+  - [ ] Requires 1.5.2 and 1.5.3. See the
+    [ACP host port](contracts/acp-host-port.md) §§1, 4, and 5.
+  - [ ] Wire the daemon composition root to the SDK adapter and shared runner
+    boundary; use disposable state, one-run admission, finite deadlines/spool,
+    and verified effective systemd limits. Start with the scripted peer, then
+    one installed/configured agent whose required services fit the profile.
+  - [ ] Success: the local harness submits a prompt and observes ordered
+    output, outcome, and lifecycle evidence through the real daemon. Missing
+    services remain unavailable; the experiment publishes no cloud state and
+    reports no production qualification.
+
+- [ ] 1.5.5. Record capability, failure, and replacement evidence for the spike.
+
+  - [ ] Requires 1.5.4. See the [ACP host port](contracts/acp-host-port.md)
+    §§3–6 and [runner recovery](contracts/arun-transport.md) §§7–8.
+  - [ ] Exercise missing capabilities, permission denial, slow consumers,
+    partial frames, cancellation, lost receipts, daemon death, and stale
+    generation responses. Select fake/SDK adapters only on fresh runs; retain
+    the same corpus for later Magitek qualification.
+  - [ ] Success: after daemon death the runner retains raw evidence, while
+    `youxiad` reports `recovery_required` and never initializes a replacement
+    driver on old pipes or resends an uncertain prompt. The report separates
+    pass/fail, unsupported, unqualified, and not-run cases and links remaining
+    production work to 1.3.1, 3.2.1–3.2.6, and 3.5.3.
 
 ## 2. First spike: trustworthy Ishiban observation
 
@@ -484,9 +567,12 @@ converge with an existing Lody peer while all expensive work remains outside
 liveness and transport execution, the architecture supports hosting without
 recreating the TypeScript daemon's failure mechanisms.
 
-This slice runs in a disposable, explicitly supported workspace and uses a
-custom or already installed ACP executable. It does not depend on rebuilding
-every provider downloader, MCP integration, or orchestration feature.
+This qualified slice runs in a disposable, explicitly supported workspace and
+uses a custom or already installed ACP executable. It does not depend on
+rebuilding every provider downloader, MCP integration, or orchestration
+feature. Step 1.5 can supply the local runner/SDK experiment earlier;
+completing it does not establish this slice's cloud compatibility or resource
+guarantees.
 
 ### 3.1. Make local writes durable before publishing them
 
@@ -561,14 +647,16 @@ the only copy of agent output. See RFC 0001 §§5 and 7.
 ### 3.2. Own the agent process and its protocol capacity
 
 Can a noisy, hung, or exited agent leave the host responsive and its outcome
-unambiguous? This step applies the SDK gate to a real child process. See RFC
-0001 §§3, 7, and 9.
+unambiguous? This step qualifies the port's selected backend and raw runner
+under the full hosting contract. See RFC 0001 §§3, 7, 9, and 15.
 
 - [ ] 3.2.1. Implement systemd-supervised arun and agent execution.
 
   - [ ] Requires 1.3.1, 2.5.2, and 2.2.6.
   - [ ] See RFC 0001 §§7, 9, 11, 13.3, and 14, and the
     [Linux architecture][architecture] §§4–7.
+  - [ ] Integrate the 1.5.2 prototype where available; its local witnesses do
+    not replace full host admission, durable launch, and reconciliation checks.
   - [ ] Qualify the user manager, cgroup v2 controllers, inherited limits, and
     lingering policy. Use independent arun services with no daemon stop
     dependency and no automatic runner restart.
@@ -583,9 +671,10 @@ unambiguous? This step applies the SDK gate to a real child process. See RFC
 
 - [ ] 3.2.2. Integrate Magitek frame limits and downstream admission credits.
 
-  - [ ] Requires 3.2.1, 3.2.4, and 1.3.1. See RFC 0001 §§7, 9, 10, 13.4, and 14.
-  - [ ] Use Magitek's qualified implementation; enforce limits before allocation
-    and through retained leases and downstream queues. Keep callbacks bounded,
+  - [ ] Requires 3.2.1, 3.2.4, 1.3.1, and 1.5.1. See RFC 0001 §§7, 9, 10,
+    13.4, 14, and 15, and the [ACP host port](contracts/acp-host-port.md) §4.
+  - [ ] Integrate the Magitek adapter behind the port. Enforce allocation
+    limits and charge retained leases and downstream queues. Keep callbacks bounded,
     retain decoder state across cancellable reads, and poison abandoned logical
     frames even when abandonment falls between complete arun chunks.
   - [ ] Success: fragmented frames across timer/control events retain every
@@ -628,6 +717,20 @@ unambiguous? This step applies the SDK gate to a real child process. See RFC
     explicit uncertain outcome. Capability advertisement permits transparent
     continuation only after the restoration path passes; a tested fallback
     alone cannot advertise it.
+
+- [ ] 3.2.6. Qualify replacement of the SDK adapter with Magitek on fresh runs.
+
+  - [ ] Requires 3.2.2 and 1.5.5, plus a pinned Magitek candidate revision
+    exposing the required public API. Joint pre-release qualification with
+    Magitek step 4.2 may establish the evidence before either release.
+    See the [ACP host port](contracts/acp-host-port.md)
+    §§3–6 and [ADR 0002](adrs/adr-0002-acp-host-port-and-adapters.md).
+  - [ ] Run the shared corpus through both adapters with their declared
+    capability profiles; preserve evidence and charge ownership through the
+    Magitek translation. Record optional differences and measured guarantees.
+  - [ ] Success: changing the composition-root selection for a new run needs
+    no domain-policy rewrite; required cases pass, unavailable features remain
+    explicit, and uncertain old work never crosses adapter generations.
 
 ### 3.3. Run a complete turn and publish incremental history
 
@@ -757,7 +860,7 @@ and replica recovery? The result defines the fleet admission gate. See RFC 0001
 
 - [ ] 3.5.3. Pass the combined one-agent fault and interoperability gate.
 
-  - [ ] Requires 3.5.1, 3.5.2, 3.4.3, and 3.2.5. See RFC 0001 §§10–14.
+  - [ ] Requires 3.5.1, 3.5.2, 3.4.3, 3.2.5, and 3.2.6. See RFC 0001 §§10–15.
   - [ ] Require a remote peer to receive fresh renewals while history/import is
     blocked; restart only a worker, disconnect an accepted command's caller, and
     complete/cancel work at full ordinary admission as separate witnesses.

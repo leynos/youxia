@@ -7,6 +7,11 @@ follow the user brief. The service topology and recovery contracts below
 require review and implementation evidence; this ADR records no acceptance or
 deployed capability.
 
+[Proposed ADR 0002](adr-0002-acp-host-port-and-adapters.md) refines the
+daemon's ACP engine boundary with an application-owned port and an early SDK
+adapter. The independent runner lifetime and recovery requirements below remain
+intact.
+
 ## Date
 
 2026-11-17.
