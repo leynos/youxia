@@ -116,6 +116,7 @@ fn {name}() {{
         )
 
     def test_normal_ui_and_cargo_fallback_retain_tests(self):
+        """Keep compile targets out of nextest yet run them in UI and fallback."""
         self.probe("ordinary")
         self.probe("compile_probe")
         options = ("CHECK_BUILD_TOOLS=true",)
@@ -147,6 +148,7 @@ fn {name}() {{
         )
 
     def test_empty_ui_lane_is_an_explicit_noop(self):
+        """Report an empty UI lane as a no-op rather than a failure."""
         result = self.make(
             "test-ui",
             "CHECK_BUILD_TOOLS=true",
@@ -155,6 +157,7 @@ fn {name}() {{
         self.assertIn("nothing to run", result.stdout)
 
     def test_coverage_exclusion_preserves_targets_and_refuses_conflicts(self):
+        """Check exclusion is idempotent, keeps sources, and rejects conflicts."""
         self.probe("ordinary")
         self.probe("compile_probe")
         self.run_command("bash", "scripts/exclude-ui-targets.sh")
@@ -202,6 +205,7 @@ fn {name}() {{
         )
 
     def test_coverage_requires_nextest_to_exclude_compile_targets(self):
+        """Refuse coverage without nextest so UI targets are never instrumented."""
         result = self.make(
             "coverage",
             "CHECK_COVERAGE_TOOLS=true",
@@ -219,6 +223,7 @@ fn {name}() {{
         )
 
     def test_coverage_overrides_the_development_cranelift_profile(self):
+        """Instrument coverage with LLVM despite a development Cranelift profile."""
         self.write(
             ".cargo/config.toml",
             """[unstable]
@@ -335,6 +340,7 @@ fn covered() { assert_eq!(lane_probe::answer(), 42, "Fixture answer must be 42")
         )
 
     def test_timeouts_terminate_a_hanging_test(self):
+        """Check that per-test and global timeouts each terminate a hanging test."""
         config = self.repo / ".config/nextest.toml"
         text = config.read_text()
         profile = tomllib.loads(text)["profile"]["default"]

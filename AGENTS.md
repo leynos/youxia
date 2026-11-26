@@ -233,7 +233,11 @@ cloned only on insertion, and error context is built lazily. See
     ```
 
     validating formatting across the entire workspace without modifying files.
-  - `make lint` executes:
+  - `make lint` first runs `make interrogate` (`interrogate --fail-under 100`
+    over `tests`, through `uv`; add new Python directories to
+    `INTERROGATE_TARGETS`; it rounds its percentage to one decimal, so check
+    the missing count directly if the Python estate ever passes about 2,000
+    definitions), then executes:
 
     ```makefile
     RUSTDOCFLAGS="$(RUSTDOC_FLAGS)" RUSTFLAGS="$(DEV_RUST_FLAGS)" cargo doc --no-deps

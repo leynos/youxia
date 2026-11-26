@@ -75,6 +75,7 @@ echo cargo >> calls
         )
 
     def test_checker_accepts_available_tools_and_only_warns_on_mold_pin(self) -> None:
+        """Accept available tools, warn on the mold pin, and install nothing."""
         result = self.make("check-build-tools")
         self.assertIn("does not match the pin", result.stdout)
         self.assertFalse(
@@ -111,6 +112,7 @@ echo cargo >> calls
         )
 
     def test_missing_toolchain_and_components_are_failures(self) -> None:
+        """Fail on a missing toolchain or component without triggering installs."""
         for has_toolchain, has_components, message in (
             (False, True, "is not installed"),
             (True, False, "component clippy is not installed"),
@@ -127,6 +129,7 @@ echo cargo >> calls
                 )
 
     def test_unusable_linkers_fail(self) -> None:
+        """Fail when a present linker cannot report its version."""
         for tool, target, message in (
             ("mold", "check-build-tools", "cannot report its version"),
             ("clang", "check-build-tools", "cannot report its version"),
@@ -141,6 +144,7 @@ echo cargo >> calls
                 path.write_text(original)
 
     def test_missing_linkers_do_not_fall_back_to_host_tools(self) -> None:
+        """Fail when a linker is absent instead of using host tools."""
         for command in ("bash", "make", "dirname", "grep", "awk", "cat"):
             (self.repo / "bin" / command).symlink_to(shutil.which(command))
         isolated = {"PATH": str(self.repo / "bin")}
@@ -241,6 +245,7 @@ echo cargo >> calls
                 )
 
     def test_installer_rejects_bad_checksum_before_unpacking(self) -> None:
+        """Reject a corrupt download before any archive is unpacked."""
         self.write(
             "bin/uname",
             """#!/bin/sh
