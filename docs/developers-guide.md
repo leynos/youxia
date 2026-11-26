@@ -5,8 +5,9 @@ This guide explains the contributor workflow for the generated Youxia project.
 ## Local Workflow
 
 Use `make all` as the public entrypoint for formatting, linting, and tests.
-`make lint` runs YAML, Actions, and shell checks, then rustdoc, Clippy, and
-Whitaker. `make test` prefers `cargo nextest run` and falls back to
+`make lint` first runs `make interrogate` (Python docstring coverage over
+`tests` through `uv`), then YAML, Actions, and shell checks, then rustdoc,
+Clippy, and Whitaker. `make test` prefers `cargo nextest run` and falls back to
 `cargo test` when cargo-nextest is not available. `make check-fmt` verifies
 Rust formatting with `cargo fmt --all -- --check`, and `make fmt` formats Rust
 sources with nightly `rustfmt` and Markdown with `mdtablefix`. Both formatting
