@@ -8,14 +8,17 @@ Youxia application does not load them yet.
 The [Linux architecture](../youxia-design.md) adds the private runner transport
 and an illustrative host resource profile. The runner contract defines
 semantics; selecting its exact wire encoding remains an implementation gate.
+The ACP host port separates daemon policy from the selected protocol engine and
+defines capability handling for the SDK experiment and later Magitek adapter.
 
-| File                                                       | Purpose                                                                                 | Boundary                                                                        |
-| ---------------------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| [ishiban-session.schema.json](ishiban-session.schema.json) | Versioned session projection for Ishiban                                                | A proposed local read model, separate from upstream Lody's observation protocol |
-| [storage.sql](storage.sql)                                 | SQLite tables, constraints, immutable input/payload guards, and transaction obligations | A logical persistence contract, not an upstream database migration              |
-| [config.example.toml](config.example.toml)                 | Initial budgets and observation/hosting authority                                       | Proposed settings requiring implementation, validation, and measurement         |
-| [arun-transport.md](arun-transport.md)                     | Runner identity, attachment, raw replay, write receipts, and recovery                   | Private daemon/runner semantics; no ACP interpretation in `arun`                |
-| [linux-host.example.toml](linux-host.example.toml)         | Illustrative slices, service policy, admission, and raw transport budgets               | Linux extension to the base configuration; not measured production defaults     |
+| File                                                       | Purpose                                                                                 | Boundary                                                                           |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| [ishiban-session.schema.json](ishiban-session.schema.json) | Versioned session projection for Ishiban                                                | A proposed local read model, separate from upstream Lody's observation protocol    |
+| [storage.sql](storage.sql)                                 | SQLite tables, constraints, immutable input/payload guards, and transaction obligations | A logical persistence contract, not an upstream database migration                 |
+| [config.example.toml](config.example.toml)                 | Initial budgets and observation/hosting authority                                       | Proposed settings requiring implementation, validation, and measurement            |
+| [arun-transport.md](arun-transport.md)                     | Runner identity, attachment, raw replay, write receipts, and recovery                   | Private daemon/runner semantics; no ACP interpretation in `arun`                   |
+| [acp-host-port.md](acp-host-port.md)                       | Application-owned ACP operations, capabilities, evidence, and adapter replacement       | Domain policy stays independent of SDK/Magitek types; `arun` remains raw transport |
+| [linux-host.example.toml](linux-host.example.toml)         | Illustrative slices, service policy, admission, and raw transport budgets               | Linux extension to the base configuration; not measured production defaults        |
 
 _Table 1: Proposed contracts and the boundaries they define._
 

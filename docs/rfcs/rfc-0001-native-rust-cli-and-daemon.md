@@ -42,6 +42,10 @@ pipes in an independent systemd service, while ACP semantics stay in `youxiad`.
 Process and byte survival do not by themselves establish protocol continuation
 after daemon replacement.
 
+Section 15 refines the engine dependency through a Youxia-owned ACP host port.
+It permits an early local SDK/runner experiment and later Magitek adapter
+replacement while preserving the qualified hosting and recovery gates.
+
 Upstream and library findings describe the revisions inspected on 2026-11-14.
 They do not establish the currently deployed CLI/server profile or the latest
 available dependency versions. Implementation must requalify that profile. This
@@ -64,6 +68,7 @@ daemon, completed interoperability gate, or measured benchmark result.
 - [12. Decisions, gates, and implementation hand-off][section-12]
 - [13. Amendments for Youxia implementation][section-13]
 - [14. Linux component architecture amendment][section-14]
+- [15. ACP host port and local SDK experiment][section-15]
 
 ## 1. Decision and scope
 
@@ -1534,6 +1539,35 @@ service profile. Preserve the original baseline citations in this RFC; use the
 architecture's immutable evidence references and the deployment qualification
 gate before expanding compatibility claims.
 
+## 15. ACP host port and local SDK experiment
+
+[ADR 0002](../adrs/adr-0002-acp-host-port-and-adapters.md) and the
+[ACP host port contract](../contracts/acp-host-port.md), proposed 2026-11-20,
+refine §14's protocol-engine dependency. Youxia owns `AcpHostPort`, domain
+evidence, and capability semantics. An initial `acpsdk` adapter uses the
+official Rust SDK; a later adapter consumes Magitek's qualified facade. Both
+use the same raw `arun` transport. No concrete backend types enter domain
+policy or persisted application records.
+
+The port follows Magitek's planned capability set. Consumers distinguish
+implementation, peer negotiation, installed services, authorization, readiness,
+and qualification; they reject missing required capabilities and handle
+optional ones explicitly. Every profile preserves truthful submission evidence,
+generation fencing, event completeness, and permission authority.
+
+Roadmap step 1.5 permits a disposable one-agent local experiment independently
+of Murder, cloud integration, phase 2, and Magitek/Wireframe delivery. It
+records unqualified SDK retention and publishes no Lody state. It does not
+satisfy the full hosting resource or interoperability gates in 1.3.1, 3.2.2,
+and 3.5.3. Magitek retains ownership of its own dependency qualification.
+
+Adapter selection belongs to the daemon composition root and stays fixed per
+protocol generation. The shared corpus qualifies replacement on fresh runs in
+3.2.6. Neither process survival nor byte replay permits hot-swapping a live
+conversation, reconstructing lost ACP state, or replaying uncertain work. After
+daemon death, the early adapter reports `recovery_required` and retains the
+existing fenced recovery policy.
+
 ## Sources
 
 The Lody links identify the inspected compatibility revision. Library links
@@ -1629,6 +1663,7 @@ requirements, not source measurements.
 [section-12]: #12-decisions-gates-and-implementation-hand-off
 [section-13]: #13-amendments-for-youxia-implementation
 [section-14]: #14-linux-component-architecture-amendment
+[section-15]: #15-acp-host-port-and-local-sdk-experiment
 [section-2]: #2-verified-baseline-and-compatibility-boundaries
 [section-3]: #3-components-and-runtime-isolation
 [section-4]: #4-ishiban-observation-and-replay
