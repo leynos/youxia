@@ -6,19 +6,20 @@ This guide explains the contributor workflow for the generated Youxia project.
 
 Use `make all` as the public entrypoint for formatting, linting, and tests.
 `make lint` first runs `make interrogate` (Python docstring coverage over
-`tests` through `uv`), then YAML, Actions, and shell checks, then rustdoc,
-Clippy, and Whitaker. `make test` prefers `cargo nextest run` and falls back to
-`cargo test` when cargo-nextest is not available. `make check-fmt` verifies
-Rust formatting with `cargo fmt --all -- --check`, and `make fmt` formats Rust
-sources with nightly `rustfmt` and Markdown with `mdtablefix`. Both formatting
-targets select tracked and untracked Markdown through Git; ignored files are
-excluded. `make typecheck` type-checks without building via `cargo check`.
-`make audit` derives the Rust workspace root with `cargo metadata`, logs
-workspace member manifests, and runs `cargo audit` once from the workspace
-root. PR CI skips `make audit` and the audit-only setup when `github.actor` is
-`dependabot[bot]`; that keeps whole-lockfile advisories from blocking unrelated
-Dependabot PRs while human PRs retain the audit gate. The compensating control
-is `.github/workflows/audit.yml`, which runs weekly and can also be triggered
+`scripts` and `tests` through the `uv_gate` helper), then YAML, Actions, and
+shell checks, then rustdoc, Clippy, and Whitaker. `make test` prefers
+`cargo nextest run` and falls back to `cargo test` when cargo-nextest is not
+available. `make check-fmt` verifies Rust formatting with
+`cargo fmt --all -- --check`, and `make fmt` formats Rust sources with nightly
+`rustfmt` and Markdown with `mdtablefix`. Both formatting targets select
+tracked and untracked Markdown through Git; ignored files are excluded.
+`make typecheck` type-checks without building via `cargo check`. `make audit`
+derives the Rust workspace root with `cargo metadata`, logs workspace member
+manifests, and runs `cargo audit` once from the workspace root. PR CI skips
+`make audit` and the audit-only setup when `github.actor` is `dependabot[bot]`;
+that keeps whole-lockfile advisories from blocking unrelated Dependabot PRs
+while human PRs retain the audit gate. The compensating control is
+`.github/workflows/audit.yml`, which runs weekly and can also be triggered
 manually. `make coverage` uses `cargo llvm-cov` with `lld`.
 
 GitHub Actions Act validation lives in `.github/workflows/act-validation.yml`.
@@ -60,16 +61,25 @@ LLVM-compatible linker behaviour.
 `make all` runs every gate, so it needs the whole tool set installed before the
 full generated workflow can run locally on Linux: `clang`, `lld`, `mold`,
 `python3` 3.11 or newer, `uv`, `yamllint`, `actionlint`, ShellCheck,
-`mdtablefix` 0.6.1, `whitaker`, `cargo-nextest` and `cargo-llvm-cov`.
-`make lint` drives the YAML, workflow and shell linters as well as Whitaker,
-`make check-fmt` checks the Git-selected Markdown through `mdtablefix --check`
-and only `make fmt` rewrites it, and `make test-workflow-contracts` and
-`make spelling` fetch their pinned tools with `uv`. The tooling contracts drive
-the nextest lanes and `make coverage`, so the runner and the coverage tool are
-needed for `make test-tooling`, and therefore for `make all`. `make audit`
-additionally needs `cargo-audit`, and the optional `make markdownlint` and
-`make nixie` targets need `markdownlint-cli2` and `nixie`; none of those three
-belongs to `make all`.
+`mdtablefix` 0.6.1, `whitaker`, `cargo-nextest` and `cargo-llvm-cov`. The
+Makefile runs the `interrogate` and CV-005 contract tools through the vendored
+`scripts/uv_gate.py` helper (`UV_GATE`, which needs `python3` 3.9 or newer on
+`PATH`). The helper selects the global uv cache, runs offline first and makes
+at most one online attempt when a tool is not cached yet. A uv that reports only
+`Git operation failed` for a Git source missing from the cache is not retried:
+warm the cache once by running `uv tool run` on that source, or use a uv that
+names the offline reason (CI's uv 0.13.10 does). The spelling builder keeps its
+direct release-tag call, because the spelling baseline requires that form and
+the helper accepts only a full commit. There is no `UV` override; the helper
+finds uv on `PATH`. `make lint` drives the YAML, workflow and shell linters as
+well as Whitaker, `make check-fmt` checks the Git-selected Markdown through
+`mdtablefix --check` and only `make fmt` rewrites it, and
+`make test-workflow-contracts` and `make spelling` fetch their pinned tools with
+`uv`. The tooling contracts drive the nextest lanes and `make coverage`, so
+the runner and the coverage tool are needed for `make test-tooling`, and
+therefore for `make all`. `make audit` additionally needs `cargo-audit`, and
+the optional `make markdownlint` and `make nixie` targets need
+`markdownlint-cli2` and `nixie`; none of those three belongs to `make all`.
 
 ### Repository check boundaries
 

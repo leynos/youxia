@@ -82,13 +82,19 @@ TYPOS_CONFIG_BUILDER = uv tool run --from \
 	typos-config-builder
 WHITAKER ?= $(or $(shell command -v whitaker 2>/dev/null),$(wildcard $(USER_WHITAKER)),whitaker)
 
-UV ?= uv
+# Every uv call but the spelling builder's goes through the vendored helper,
+# which cleans the environment, uses the global uv cache, runs offline first and
+# goes online at most once. The builder runs directly at its release tag,
+# because the spelling baseline requires that form and the helper accepts only
+# a full commit. See
+# https://github.com/leynos/shared-actions/tree/main/uv_gate for the contract.
+# `scripts/uv_gate.py` is the shared-actions helper, vendored byte for byte, so
+# update it by copying the canonical file, never by editing it here.
+UV_GATE ?= python3 scripts/uv_gate.py
 # The shared CV-005 checker is pinned by one revision, so a rule fix is a pin
 # bump and the generated project never carries its own copy of the rules.
 CV005_CONTRACTS_REF ?= 38905b4b2caec5b049438e6dc3f3f6b36c04d2df
-CV005_CONTRACTS = $(UV) tool run --python 3.13 \
-	--from 'git+https://github.com/leynos/shared-actions@$(CV005_CONTRACTS_REF)\#subdirectory=packages/cv005-contracts' \
-	cv005-contracts
+CV005_CONTRACTS = $(UV_GATE) tool --python 3.13 --from 'git+https://github.com/leynos/shared-actions@$(CV005_CONTRACTS_REF)\#subdirectory=packages/cv005-contracts' -- cv005-contracts
 
 build: target/debug/$(TARGET) ## Build debug binary
 release: target/release/$(TARGET) ## Build release binary
@@ -189,8 +195,8 @@ lint-shell: ## Lint tracked shell scripts
 # INTERROGATE_TARGETS; add a new Python directory there. No `--python` pin: a
 # managed interpreter would be downloaded.
 INTERROGATE_VERSION ?= 1.7.0
-INTERROGATE_TARGETS ?= tests
-INTERROGATE = $(UV) tool run --from 'interrogate==$(INTERROGATE_VERSION)' interrogate --fail-under 100
+INTERROGATE_TARGETS ?= scripts tests
+INTERROGATE = $(UV_GATE) tool --from 'interrogate==$(INTERROGATE_VERSION)' -- interrogate --fail-under 100
 
 # To list each undocumented definition, run
 # `make interrogate INTERROGATE_TARGETS="-vv tests"`.
